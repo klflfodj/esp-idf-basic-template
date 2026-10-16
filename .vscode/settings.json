@@ -1,0 +1,19 @@
+{
+    "idf.currentSetup": "C:\\esp\\v6.1\\esp-idf",
+    "idf.flashType": "UART",
+    "idf.openOcdConfigs": [
+      "board/esp32-wrover-kit-3.3v.cfg"
+    ],
+    "idf.port": "detect",
+    "idf.customExtraVars": {
+      "IDF_TARGET": "esp32",
+      "PYTHONUTF8": "1",
+      "GCC_COLORS": "error=01;31:warning=01;33:note=01;36:locus=01:caret=01;32:quote=01"
+    },
+    "clangd.path": "C:\\Espressif\\tools\\esp-clangd\\esp-21.1.3_20260408\\esp-clangd\\bin\\clangd.exe",
+    "clangd.arguments": [
+      "--background-index",
+      "--query-driver=**",
+      "--compile-commands-dir=c:\\Users\\yhbxzr\\Desktop\\00_basic\\build"
+    ]
+}
