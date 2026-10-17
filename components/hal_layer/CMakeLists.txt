@@ -1,8 +1,10 @@
 set(src_dirs
-            gpio_hal)
+            gpio_hal
+            intr_hal)
 
 set(include_dirs
-            gpio_hal)
+            gpio_hal
+            intr_hal)
 
 set(requires
             esp_driver_gpio)

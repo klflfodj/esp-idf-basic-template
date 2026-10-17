@@ -38,8 +38,9 @@ typedef enum
 } hal_gpio_intr_t;
 
 
-bool hal_gpio_init(uint8_t gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull, hal_gpio_intr_t intr);
-void hal_gpio_set(uint8_t gpio_num);     
-void hal_gpio_clear(uint8_t gpio_num);   
-void hal_gpio_toggle(uint8_t gpio_num);
-bool hal_gpio_read(uint8_t gpio_num);    
+bool hal_gpio_init(int gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull, hal_gpio_intr_t intr);
+void hal_gpio_set(int gpio_num);     
+void hal_gpio_clear(int gpio_num);   
+bool hal_gpio_set_level(int gpio_num, bool state);
+void hal_gpio_toggle(int gpio_num);
+bool hal_gpio_read(int gpio_num, bool *out_level);        

@@ -5,9 +5,11 @@
 #include <stdio.h>
 #include "driver/gpio.h"
 
-static inline bool hal_gpio_check_num(uint8_t gpio_num)
+static uint64_t s_high_mask = 0; 
+
+static inline bool hal_gpio_check_num(int gpio_num)
 {
-    if (gpio_num >= GPIO_NUM_MAX)
+    if (!GPIO_IS_VALID_GPIO(gpio_num))
     {
         printf("gpio_num is out of range\n");
         return false;
@@ -16,25 +18,10 @@ static inline bool hal_gpio_check_num(uint8_t gpio_num)
 }
 
 // 初始化GPIO
-bool hal_gpio_init(uint8_t gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull, hal_gpio_intr_t intr)
+bool hal_gpio_init(int gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull, hal_gpio_intr_t intr)
 {
     if (!hal_gpio_check_num(gpio_num))
     {
-        return false;
-    }
-    if (mode >= HAL_GPIO_MODE_MAX || mode < 0)
-    {
-        printf("mode is out of range\n");
-        return false;
-    }
-    if (pull >= HAL_GPIO_PULL_MAX || pull < 0)
-    {
-        printf("pull is out of range\n");
-        return false;
-    }
-    if (intr >= HAL_GPIO_INTR_MAX || intr < 0)
-    {
-        printf("intr is out of range\n");
         return false;
     }
     
@@ -115,42 +102,63 @@ bool hal_gpio_init(uint8_t gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull,
     return (err == ESP_OK);
 }
 
-// 设置高电平
-void hal_gpio_set(uint8_t gpio_num)
-{
-    if (!hal_gpio_check_num(gpio_num))
-    {
-        return;
-    }
-    gpio_set_level(gpio_num, 1);
-}
-
-// 设置低电平
-void hal_gpio_clear(uint8_t gpio_num)
-{
-    if (!hal_gpio_check_num(gpio_num))
-    {
-        return;
-    }
-    gpio_set_level(gpio_num, 0);
-}
-
-// 切换电平
-void hal_gpio_toggle(uint8_t gpio_num)
-{
-    if (!hal_gpio_check_num(gpio_num))
-    {
-        return;
-    }
-    gpio_set_level(gpio_num, !gpio_get_level(gpio_num));
-}
-
-// 读取电平
-bool hal_gpio_read(uint8_t gpio_num)
+bool hal_gpio_set_level(int gpio_num, bool state)
 {
     if (!hal_gpio_check_num(gpio_num))
     {
         return false;
     }
-    return gpio_get_level(gpio_num);
+
+    esp_err_t err = gpio_set_level(gpio_num, state ? 1U : 0U);
+    if (err != ESP_OK)
+    {
+        return false;
+    }
+    
+    if (state)
+    {
+        s_high_mask |= (1ULL << gpio_num);
+    }
+    else
+    {
+        s_high_mask &= ~(1ULL << gpio_num);
+    }
+
+    return true;
+}
+
+// 设置高电平
+void hal_gpio_set(int gpio_num)
+{
+    (void)hal_gpio_set_level(gpio_num, true);
+}
+
+// 设置低电平
+void hal_gpio_clear(int gpio_num)
+{
+    (void)hal_gpio_set_level(gpio_num, false);
+}
+
+// 切换电平
+void hal_gpio_toggle(int gpio_num)
+{
+    if (!hal_gpio_check_num(gpio_num))
+    {
+        return;
+    }
+    
+    bool next_level = ((s_high_mask >> gpio_num) & 1U) == 0;
+    (void)hal_gpio_set_level(gpio_num, next_level);
+}
+
+// 读取电平
+bool hal_gpio_read(int gpio_num, bool *out_level)
+{
+    if (!hal_gpio_check_num(gpio_num) || out_level == NULL)
+    {
+        return false;          
+    }
+
+    *out_level = (gpio_get_level(gpio_num) != 0);
+    return true;               
 }
