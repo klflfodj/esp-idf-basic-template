@@ -3,8 +3,10 @@
 #include <stdio.h>
 #include "driver/gpio.h"
 
+// GPIO中断服务是否已安装
 static bool s_isr_service_installed = false;
 
+// 初始化GPIO中断服务
 bool hal_gpio_isr_init(void)
 {
     if (s_isr_service_installed)
@@ -23,6 +25,7 @@ bool hal_gpio_isr_init(void)
     return true;
 }
 
+// 注册GPIO中断回调
 bool hal_gpio_isr_register(int gpio_num, hal_gpio_isr_cb_t cb, void *arg)
 {
     if (!GPIO_IS_VALID_GPIO(gpio_num) || cb == NULL)

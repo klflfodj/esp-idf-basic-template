@@ -5,8 +5,10 @@
 #include <stdio.h>
 #include "driver/gpio.h"
 
+// 引脚电平掩码
 static uint64_t s_high_mask = 0; 
 
+// 检查GPIO引脚号是否有效
 static inline bool hal_gpio_check_num(int gpio_num)
 {
     if (!GPIO_IS_VALID_GPIO(gpio_num))
@@ -102,6 +104,7 @@ bool hal_gpio_init(int gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull, hal
     return (err == ESP_OK);
 }
 
+// 自由设置GPIO电平
 bool hal_gpio_set_level(int gpio_num, bool state)
 {
     if (!hal_gpio_check_num(gpio_num))

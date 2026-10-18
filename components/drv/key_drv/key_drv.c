@@ -5,6 +5,7 @@
 #include "freertos/task.h"
 #include "gpio_hal.h"
 
+// 记录修改按键事件
 static void drv_key_emit(drv_key_t* key, drv_key_event_t evt)
 {
     if ((key -> cfg.events & evt) == 0)
@@ -17,6 +18,7 @@ static void drv_key_emit(drv_key_t* key, drv_key_event_t evt)
     }
 }
 
+// 报告按键点击事件
 static void drv_key_report_click(drv_key_t* key)
 {
     uint8_t cnt = key -> click_cnt;
@@ -38,6 +40,7 @@ static void drv_key_report_click(drv_key_t* key)
 
 }
 
+// 扫描按键状态
 static void drv_key_scan(drv_key_t* key)
 {
     if (key == NULL)
@@ -117,6 +120,7 @@ static void drv_key_scan(drv_key_t* key)
     }
 }
 
+// 扫描按键状态任务
 static void drv_key_scan_task(void *arg)
 {
     drv_key_t *key = (drv_key_t *)arg;
@@ -128,6 +132,7 @@ static void drv_key_scan_task(void *arg)
     }
 }
 
+// 初始化按键驱动
 bool drv_key_init(drv_key_t* key,const drv_key_cfg_t* cfg)
 {
     if (key == NULL || cfg == NULL)
