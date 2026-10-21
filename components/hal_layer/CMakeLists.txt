@@ -12,7 +12,8 @@ set(include_dirs
 
 set(requires
             esp_driver_gpio
-            esp_adc)
+            esp_adc
+            esp_driver_uart)
 
 idf_component_register(
     SRC_DIRS ${src_dirs} 
