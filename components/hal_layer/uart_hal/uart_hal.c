@@ -91,6 +91,10 @@ bool hal_uart_write(hal_uart_port_t port, const void* data, size_t len)
         printf("uart_hal: port %d not inited\n", (int)port);
         return false;
     }
+
+    // 写入数据到串口
+    int written = uart_write_bytes((uart_port_t)port, data, len);
+    return (written == (int)len);
 }
 
 // 从串口读取数据
@@ -147,7 +151,7 @@ bool hal_uart_deinit(hal_uart_port_t port)
     }
 
     // 移除串口驱动
-    if (uart_driver_remove((uart_port_t)port) != ESP_OK)
+    if (uart_driver_delete((uart_port_t)port) != ESP_OK)
     {
         return false;
     }
