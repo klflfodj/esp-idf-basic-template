@@ -1,7 +1,7 @@
 #include "spi_hal.h"
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include "driver/spi_master.h"
 #include "driver/spi_common.h"
 #include "soc/soc_caps.h"
@@ -10,9 +10,17 @@
 #define HAL_SPI_XFER_MAX  256
 // 每条总线上的最大设备数
 #define HAL_SPI_DEV_MAX   8
-// 总线是否初始化过
-static spi_device_handle_t s_bus_ready[HAL_SPI_HOST_MAX]; 
+
 // 设备槽位：CS 引脚 + 句柄。这是内部实现，所以只放在 .c 里
+typedef struct
+{
+    int                 cs_pin; // CS 引脚号
+    spi_device_handle_t handle; // SPI 设备句柄
+} spi_dev_slot_t;
+
+// 总线是否初始化过
+static bool s_bus_ready[HAL_SPI_HOST_MAX];
+// 设备槽位
 static spi_dev_slot_t s_dev[HAL_SPI_HOST_MAX][HAL_SPI_DEV_MAX]; // 设备槽位
 static uint8_t        s_dev_cnt[HAL_SPI_HOST_MAX];  // 设备槽位计数
 // 补齐用的静态缓冲区
@@ -62,7 +70,7 @@ bool hal_spi_init(const hal_spi_cfg_t* cfg)
         return false;
     }
     // 幂等：已经建过就直接成功
-    if (s_bus_ready[cfg -> host] != NULL)
+    if (s_bus_ready[cfg->host])
     {
         return true;
     }
@@ -85,7 +93,7 @@ bool hal_spi_init(const hal_spi_cfg_t* cfg)
         return false;
     }
 
-    s_bus_ready[cfg -> host] = (spi_device_handle_t)1; // 标记总线已初始化
+    s_bus_ready[cfg->host] = true; // 标记总线已初始化
     return true;
 }
 
@@ -107,7 +115,7 @@ bool hal_spi_dev_add(const hal_spi_dev_cfg_t* cfg)
     }
 
     // 检查总线是否已初始化
-    if (s_bus_ready[cfg->host] == NULL)
+    if (!s_bus_ready[cfg->host])
     {
         printf("spi_hal: call hal_spi_init() first\n");
         return false;

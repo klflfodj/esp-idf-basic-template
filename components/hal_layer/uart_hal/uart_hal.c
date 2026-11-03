@@ -23,8 +23,16 @@ static bool hal_uart_port_check(hal_uart_port_t port)
 }
 
 // 初始化串口
-bool hal_uart_init(hal_uart_port_t port, int tx_pin, int rx_pin, uint32_t baud, uint32_t rx_buf_size)
+bool hal_uart_init(const hal_uart_cfg_t* cfg)
 {
+    if (cfg == NULL)
+    {
+        printf("uart_hal: cfg is NULL\n");
+        return false;
+    }
+
+    hal_uart_port_t port = cfg -> port;
+
     if (!hal_uart_port_check(port))
     {
         return false;
@@ -37,15 +45,16 @@ bool hal_uart_init(hal_uart_port_t port, int tx_pin, int rx_pin, uint32_t baud, 
     }
 
     // 检查接收缓冲区大小是否有效
+    uint32_t rx_buf_size = cfg -> rx_buf_size;
     if (rx_buf_size < 256)
     {
         rx_buf_size = 1024;
     }
 
-    // 配置串口参数
-    uart_config_t cfg = 
+    // 配置串口参数（变量名用 ucfg，避免和参数 cfg 重名）
+    uart_config_t ucfg = 
     {
-        .baud_rate  = (int)baud,                // 波特率
+        .baud_rate  = (int)cfg -> baud,         // 波特率
         .data_bits  = UART_DATA_8_BITS,         // 数据位
         .parity     = UART_PARITY_DISABLE,      // 校验位
         .stop_bits  = UART_STOP_BITS_1,         // 停止位
@@ -54,14 +63,15 @@ bool hal_uart_init(hal_uart_port_t port, int tx_pin, int rx_pin, uint32_t baud, 
     };
 
     // 配置串口参数
-    if (uart_param_config((uart_port_t)port, &cfg) != ESP_OK)
+    if (uart_param_config((uart_port_t)port, &ucfg) != ESP_OK)
     {
         printf("uart_hal: param config failed\n");
         return false;
     }
 
     // 设置串口引脚
-    if (uart_set_pin((uart_port_t)port, tx_pin, rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) != ESP_OK)
+    if (uart_set_pin((uart_port_t)port, cfg -> tx_pin, cfg -> rx_pin,
+                     UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE) != ESP_OK)
     {
         printf("uart_hal: set pin failed\n");
         return false;

@@ -76,17 +76,11 @@ typedef struct
 
 typedef struct
 {
-    uint8_t *tx_buf; // 发送缓冲区
+    const uint8_t *tx_buf; // 发送缓冲区（只读，驱动不会改你的数据）
     size_t   tx_len; // 发送长度（字节）
     uint8_t *rx_buf; // 接收缓冲区
     size_t   rx_len; // 接收长度（字节）
 } hal_spi_msg_t;
-
-typedef struct
-{
-    int                 cs_pin; // CS 引脚号
-    spi_device_handle_t handle; // SPI 设备句柄
-} spi_dev_slot_t;
 
 bool hal_spi_init(const hal_spi_cfg_t *cfg);
 bool hal_spi_dev_add(const hal_spi_dev_cfg_t *cfg);
