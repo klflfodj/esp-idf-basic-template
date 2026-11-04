@@ -65,108 +65,39 @@
  *   6. 每次传输超时固定 1 秒。总线被拉死时函数会返回 false，不会永远卡住。
  */
 
-// ========== 总线号 ========== //
-/** 总线编号，对应芯片的 IIC0 / IIC1 */
+// IIC 总线
 typedef enum
 {
-    HAL_IIC_BUS_0 = 0,   /**< IIC0 */
-    HAL_IIC_BUS_1 = 1,   /**< IIC1 */
-    HAL_IIC_BUS_MAX,     /**< 内部用：枚举上界 */
-} hal_iic_bus_t;
+    HAL_IIC_BUS_0 = 0,  // IIC0
+    HAL_IIC_BUS_1 = 1,  // IIC1
+    HAL_IIC_BUS_MAX,    // 最大总线数
+} hal_iic_bus_t;  // IIC 总线
 
-// ========== 总线配置 ========== //
-/** 初始化总线时要填的东西 */
+// IIC 配置
 typedef struct
 {
-    hal_iic_bus_t bus;      /**< 用哪条总线 */
-    int           scl_pin;  /**< SCL 时钟脚，例如 22 */
-    int           sda_pin;  /**< SDA 数据脚，例如 21 */
-    uint32_t      freq_hz;  /**< SCL 频率(Hz)：100000 或 400000 */
-} hal_iic_cfg_t;
+    hal_iic_bus_t bus;      // 用哪条总线
+    int           scl_pin;  // SCL 时钟脚，例如 22
+    int           sda_pin;  // SDA 数据脚，例如 21
+    uint32_t      freq_hz;  // SCL 频率(Hz)：100000 或 400000
+} hal_iic_cfg_t;  // IIC 配置
 
-// ========== 一次传输 ========== //
-/** 描述"这一次传输要干什么"
- *
- *    tx 有、rx 无   → 只写
- *    tx 无、rx 有   → 只读
- *    tx 有、rx 有   → 先写后读（读寄存器就是这种，中间不释放总线）
- */
+// IIC 消息
 typedef struct
 {
-    uint8_t        addr;    /**< 目标设备 7 位地址，例如 0x68 */
-    const uint8_t *tx_buf;  /**< 要发的字节；只读时传 NULL */
-    size_t         tx_len;  /**< 发多少字节；只读时填 0 */
-    uint8_t       *rx_buf;  /**< 收数据的缓冲区；只写时传 NULL */
-    size_t         rx_len;  /**< 想收多少字节；只写时填 0 */
-} hal_iic_msg_t;
+    uint8_t        addr;    // 目标设备 7 位地址，例如 0x68
+    const uint8_t *tx_buf;  // 发送缓冲区
+    size_t         tx_len;  // 发送长度
+    uint8_t       *rx_buf;  // 接收缓冲区
+    size_t         rx_len;  // 接收长度
+} hal_iic_msg_t;  // IIC 消息
 
 
-/** 初始化一条 IIC 总线
- *
- *  @param  cfg  总线配置（总线号、两个引脚、频率）
- *  @return true 成功；false = 配置为空 / 总线号非法 / 频率越界 / 建总线失败
- *
- *  重复初始化同一条总线是安全的（幂等），不会重复申请资源。
- *  @note 没接外部上拉电阻时本函数仍然返回 true，但后面 probe/读写会全部失败。
- */
 bool hal_iic_init(const hal_iic_cfg_t *cfg);
-
-
-/** 执行一次传输（所有操作的底层入口）
- *
- *  @param  bus  总线号
- *  @param  msg  这次要干什么（见 hal_iic_msg_t 的说明）
- *  @return true 成功（设备回了 ACK）；false = 参数错误 / 总线没初始化 /
- *                地址不是 7 位 / 设备不应答 / 总线出错 / 超时
- *
- *  tx 和 rx 都为空是无效调用，直接返回 false。
- */
 bool hal_iic_transfer(hal_iic_bus_t bus, const hal_iic_msg_t *msg);
-
-
-/** 只写
- *  @return true 成功；false 含义同 hal_iic_transfer
- */
 bool hal_iic_write(hal_iic_bus_t bus, uint8_t addr, const void *data, size_t len);
-
-
-/** 只读（不先写寄存器地址）
- *  @return true 成功；false 含义同 hal_iic_transfer
- *
- *  适用于"一上来就吐数据"的器件。绝大多数器件要先写寄存器地址，
- *  那种情况用 hal_iic_read_reg()。
- */
 bool hal_iic_read(hal_iic_bus_t bus, uint8_t addr, void *buf, size_t len);
-
-
-/** 读寄存器（先写寄存器地址，再连续读）—— 最常用的操作
- *
- *  @param  bus   总线号
- *  @param  addr  7 位地址
- *  @param  reg   寄存器地址（8 位）
- *  @param  buf   接收缓冲区
- *  @param  len   读几个字节（读一个传 1，连读传 N）
- *  @return true 成功；false 含义同 hal_iic_transfer
- *
- *  注意：寄存器地址如果是 16 位的（少数器件），这个函数不适用，
- *        请用 hal_iic_transfer() 自己填 tx_len = 2。
- */
 bool hal_iic_read_reg(hal_iic_bus_t bus, uint8_t addr, uint8_t reg,
                       void *buf, size_t len);
-
-
-/** 写寄存器（发"寄存器地址 + 一个字节"）
- *  @return true 成功；false 含义同 hal_iic_transfer
- */
 bool hal_iic_write_reg(hal_iic_bus_t bus, uint8_t addr, uint8_t reg, uint8_t value);
-
-
-/** 探测某个地址上有没有设备
- *
- *  @param  bus   总线号
- *  @param  addr  7 位地址
- *  @return true 有设备应答；false 没人应答 / 总线没初始化
- *
- *  【调试第一步就调它】。建议扫一遍 0x08 ~ 0x77。
- */
 bool hal_iic_probe(hal_iic_bus_t bus, uint8_t addr);

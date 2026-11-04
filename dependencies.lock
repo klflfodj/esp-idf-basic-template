@@ -34,9 +34,20 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 9.6.0~1
+  nixy4/u8g2:
+    component_hash: d23326bf33da6b0a41ef16caa527689d770bcb7c469d8d57ca18a42f4cfed81b
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 0.1.4
 direct_dependencies:
 - idf
 - lvgl/lvgl
-manifest_hash: 0e421fd941acf03229a600be6560b0d8348b52012be21fd7679a29382f3b9d37
+- nixy4/u8g2
+manifest_hash: 45f09d903812530624f72acd219db90e9595ca6f20efc71b1b9271dff74bb569
 target: esp32
 version: 3.0.0

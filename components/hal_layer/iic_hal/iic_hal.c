@@ -1,27 +1,24 @@
 #include "iic_hal.h"
 
 #include <stdio.h>
-#include "driver/i2c_master.h"      /* 官方 API，保持原样 */
+#include "driver/i2c_master.h"
 #include "soc/soc_caps.h"
 
 // IIC 传输超时时间，单位：毫秒
 #define HAL_IIC_XFER_TIMEOUT_MS   1000
-// 每条总线上的最大设备数
+// 每条总线上的最大设备地址
 #define HAL_IIC_DEV_MAX           8
-
-// ========== 驱动私有账本 ========== //
-
-// IIC 总线句柄（官方类型）
+// IIC 总线句柄
 static i2c_master_bus_handle_t s_bus[SOC_I2C_NUM] = {0};
 // IIC 总线频率，单位：赫兹
 static uint32_t s_bus_freq[SOC_I2C_NUM];
 
-// 设备槽位：地址 + 句柄。这是内部实现，所以只放在 .c 里
+// IIC 设备槽位
 typedef struct
 {
     uint8_t                 addr;    // 设备地址
-    i2c_master_dev_handle_t handle;  // 设备句柄（官方类型）
-} iic_dev_slot_t;
+    i2c_master_dev_handle_t handle;  // 设备句柄
+} iic_dev_slot_t;  // IIC 设备槽位
 
 static iic_dev_slot_t s_dev[SOC_I2C_NUM][HAL_IIC_DEV_MAX];
 // 每条总线上的设备数量
@@ -40,10 +37,10 @@ static bool hal_iic_bus_check(hal_iic_bus_t bus)
 }
 
 
-// 获取设备句柄：缓存里有就复用，没有就创建
+// 获取设备句柄
 static i2c_master_dev_handle_t hal_iic_dev_get(hal_iic_bus_t bus, uint8_t addr)
 {
-    // 遍历总线上的所有设备，找得到就直接返回
+    // 检查总线是否存在
     for (uint8_t i = 0; i < s_dev_cnt[bus]; i++)
     {
         if (s_dev[bus][i].addr == addr)
@@ -52,7 +49,7 @@ static i2c_master_dev_handle_t hal_iic_dev_get(hal_iic_bus_t bus, uint8_t addr)
         }
     }
 
-    // 表满了就拒绝，而不是悄悄覆盖（覆盖会泄漏旧句柄）
+    // 检查总线是否已满
     if (s_dev_cnt[bus] >= HAL_IIC_DEV_MAX)
     {
         printf("iic_hal: too many devices on bus %d (max %d)\n",
@@ -69,15 +66,16 @@ static i2c_master_dev_handle_t hal_iic_dev_get(hal_iic_bus_t bus, uint8_t addr)
         .scl_wait_us     = 0,                    // 0 = 用芯片默认值
     };
 
-    // 申请设备句柄并加入总线
+    // 申请设备句柄
     i2c_master_dev_handle_t handle = NULL;
+    // 加入总线
     if (i2c_master_bus_add_device(s_bus[bus], &dev_cfg, &handle) != ESP_OK)
     {
         printf("iic_hal: add device 0x%02X failed\n", addr);
         return NULL;
     }
 
-    // 成功之后才记账
+    // 缓存设备句柄
     s_dev[bus][s_dev_cnt[bus]].addr   = addr;
     s_dev[bus][s_dev_cnt[bus]].handle = handle;
     s_dev_cnt[bus]++;
@@ -99,7 +97,7 @@ static i2c_master_dev_handle_t hal_iic_dev_acquire(hal_iic_bus_t bus, uint8_t ad
         return NULL;
     }
 
-    // 地址超过 0x7F：多半是把手册上的 8 位地址（含读写位）直接填进来了
+    // 检查地址是否为 7 位
     if (addr > 0x7F)
     {
         printf("iic_hal: addr 0x%02X is not a 7-bit address (try >> 1)\n", addr);

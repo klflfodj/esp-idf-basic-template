@@ -18,12 +18,14 @@ bool drv_led_init(drv_led_t* led, drv_led_cfg_t* cfg)
     
     hal_gpio_pull_t pull = cfg -> level_active ? HAL_GPIO_PULL_DOWN : HAL_GPIO_PULL_UP;
 
+    // 初始化GPIO引脚为输出模式
     if (hal_gpio_init(cfg -> gpio_num, HAL_GPIO_MODE_OUTPUT, pull, HAL_GPIO_INTR_DISABLE) != true)
     {
         printf("drv_led_init: hal_gpio_init failed\n");
         return false;
     }
 
+    // 初始化LED状态为关闭
     if (hal_gpio_set_level(cfg -> gpio_num, !cfg -> level_active) != true)
     {
         printf("drv_led_init: hal_gpio_set_level failed\n");

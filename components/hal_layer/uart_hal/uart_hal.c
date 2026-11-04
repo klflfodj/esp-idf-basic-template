@@ -51,7 +51,7 @@ bool hal_uart_init(const hal_uart_cfg_t* cfg)
         rx_buf_size = 1024;
     }
 
-    // 配置串口参数（变量名用 ucfg，避免和参数 cfg 重名）
+    // 配置串口参数
     uart_config_t ucfg = 
     {
         .baud_rate  = (int)cfg -> baud,         // 波特率
