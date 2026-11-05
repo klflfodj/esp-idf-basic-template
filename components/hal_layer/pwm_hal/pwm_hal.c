@@ -11,7 +11,7 @@
 // PWM 时钟频率，单位：兹
 #define HAL_PWM_CLK_HZ    80000000UL
 // PWM 职空比，单位：千分比
-#define HAL_PWM_DUTY_FULL 1000
+#define HAL_PWM_DUTY_FULL HAL_PWM_DUTY_MAX
 // PWM 分辨率，单位：位
 #define HAL_PWM_RES_MAX   SOC_LEDC_TIMER_BIT_WIDTH
 
@@ -72,19 +72,19 @@ static uint8_t hal_pwm_pick_res(uint32_t freq_hz)
 }
 
 // 根据占空比和分辨率计算原始占空比值
-static uint32_t hal_pwm_duty_raw(uint32_t permille, uint8_t res)
+static uint32_t hal_pwm_duty_raw(uint32_t duty, uint8_t res)
 {
     // 检查占空比是否超出范围
-    if (permille > HAL_PWM_DUTY_FULL)
+    if (duty > HAL_PWM_DUTY_FULL)
     {
         // 超出范围则设置为最大值
-        permille = HAL_PWM_DUTY_FULL;
+        duty = HAL_PWM_DUTY_FULL;
     }
 
     // 计算最大值：2^res - 1
     uint32_t max = (1u << res) - 1u;
-    // 计算原始占空比值：max * permille / HAL_PWM_DUTY_FULL
-    return (uint32_t)(((uint64_t)max * permille) / HAL_PWM_DUTY_FULL);
+    // 计算原始占空比值：max * duty / HAL_PWM_DUTY_FULL
+    return (uint32_t)(((uint64_t)max * duty) / HAL_PWM_DUTY_FULL);
 }
 
 static bool hal_pwm_apply_timer(hal_pwm_info_t* p, uint32_t freq_hz)
@@ -112,7 +112,7 @@ static bool hal_pwm_apply_timer(hal_pwm_info_t* p, uint32_t freq_hz)
     p -> freq_hz    = ledc_get_freq(LEDC_LOW_SPEED_MODE, (ledc_timer_t)p->timer); // 获取实际频率
 
     // 计算原始占空比值
-    uint32_t raw = hal_pwm_duty_raw(p -> duty_permille, res);
+    uint32_t raw = hal_pwm_duty_raw(p -> duty, res);
 
     // 设置占空比
     if (ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)p->channel, raw) != ESP_OK)
@@ -134,7 +134,7 @@ bool hal_pwm_init(const hal_pwm_timer_cfg_t *cfg)
 
     int      pin = cfg->pin;
     uint32_t freq_hz = cfg->freq_hz;
-    uint32_t duty_permille = cfg->duty_permille;
+    uint32_t duty = cfg->duty;
 
     // 检查频率是否在范围内
     if (freq_hz == 0 || freq_hz > 1000000)
@@ -144,10 +144,10 @@ bool hal_pwm_init(const hal_pwm_timer_cfg_t *cfg)
     }
 
     // 检查占空比是否在范围内
-    if (duty_permille > HAL_PWM_DUTY_FULL)
+    if (duty > HAL_PWM_DUTY_FULL)
     {
         ESP_LOGE(TAG, "duty %lu out of range (0 ~ %d)",
-               (unsigned long)duty_permille, HAL_PWM_DUTY_FULL);
+               (unsigned long)duty, HAL_PWM_DUTY_FULL);
         return false;
     }
 
@@ -169,7 +169,7 @@ bool hal_pwm_init(const hal_pwm_timer_cfg_t *cfg)
     s_pwm[slot].pin            = pin;           // 记录引脚号
     s_pwm[slot].timer          = (uint8_t)slot; // 记录定时器编号
     s_pwm[slot].channel        = (uint8_t)slot; // 记录通道编号
-    s_pwm[slot].duty_permille  = duty_permille; // 记录占空比
+    s_pwm[slot].duty  = duty; // 记录占空比
     s_pwm[slot].used           = true;          // 标记为已使用
 
     // 应用定时器配置
@@ -187,7 +187,7 @@ bool hal_pwm_init(const hal_pwm_timer_cfg_t *cfg)
         .channel    = (ledc_channel_t)s_pwm[slot].channel,                      // 通道编号
         .intr_type  = LEDC_INTR_DISABLE,                                        // 禁用中断
         .timer_sel  = (ledc_timer_t)s_pwm[slot].timer,                          // 定时器编号
-        .duty       = hal_pwm_duty_raw(duty_permille, s_pwm[slot].resolution),  // 占空比值
+        .duty       = hal_pwm_duty_raw(duty, s_pwm[slot].resolution),  // 占空比值
         .hpoint     = 0,                                          // 高电平时间点，单位：微秒
     };
 
@@ -222,13 +222,13 @@ bool hal_pwm_set_freq(int pin, uint32_t freq_hz)
 }
 
 // 设置 PWM 占空比
-bool hal_pwm_set_duty(int pin, uint32_t duty_permille)
+bool hal_pwm_set_duty(int pin, uint32_t duty)
 {
     // 检查占空比是否在范围内
-    if (duty_permille > HAL_PWM_DUTY_FULL)
+    if (duty > HAL_PWM_DUTY_FULL)
     {
         // 超出范围，设置为最大占空比
-        duty_permille = HAL_PWM_DUTY_FULL;  
+        duty = HAL_PWM_DUTY_FULL;  
     }
 
     int slot = hal_pwm_find(pin); 
@@ -239,7 +239,7 @@ bool hal_pwm_set_duty(int pin, uint32_t duty_permille)
     }
 
     // 计算原始占空比值
-    uint32_t raw = hal_pwm_duty_raw(duty_permille, s_pwm[slot].resolution);
+    uint32_t raw = hal_pwm_duty_raw(duty, s_pwm[slot].resolution);
 
     // 设置占空比
     if (ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)s_pwm[slot].channel, raw) != ESP_OK)
@@ -252,17 +252,17 @@ bool hal_pwm_set_duty(int pin, uint32_t duty_permille)
         return false;
     }
 
-    s_pwm[slot].duty_permille = duty_permille; // 更新占空比
+    s_pwm[slot].duty = duty; // 更新占空比
     return true;
 }
 
 // 更新 PWM 频率和占空比
-bool hal_pwm_update(int pin, uint32_t freq_hz, uint32_t duty_permille)
+bool hal_pwm_update(int pin, uint32_t freq_hz, uint32_t duty)
 {
     // 检查占空比是否在范围内
-    if (duty_permille > HAL_PWM_DUTY_FULL)
+    if (duty > HAL_PWM_DUTY_FULL)
     {
-        duty_permille = HAL_PWM_DUTY_FULL;  
+        duty = HAL_PWM_DUTY_FULL;  
     }
 
     int slot = hal_pwm_find(pin); 
@@ -278,7 +278,7 @@ bool hal_pwm_update(int pin, uint32_t freq_hz, uint32_t duty_permille)
         return false;
     }
 
-    s_pwm[slot].duty_permille = duty_permille; // 更新占空比
+    s_pwm[slot].duty = duty; // 更新占空比
     // 应用定时器配置
     return hal_pwm_apply_timer(&s_pwm[slot], freq_hz);
 }
@@ -297,7 +297,7 @@ bool hal_pwm_stop(int pin)
 
     s_pwm[slot].used           = false;  // 标记为未使用
     s_pwm[slot].pin            = -1;     // 重置引脚号
-    s_pwm[slot].duty_permille  = 0;      // 重置占空比
+    s_pwm[slot].duty  = 0;      // 重置占空比
     s_pwm[slot].freq_hz        = 0;      // 重置频率
     return true;
 }

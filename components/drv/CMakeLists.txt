@@ -1,12 +1,16 @@
 set(src_dirs
             led_drv
             key_drv
-            oled_drv)
+            oled_drv
+            pot_drv
+            servo_drv)
 
 set(include_dirs
             led_drv
             key_drv
-            oled_drv)
+            oled_drv
+            pot_drv
+            servo_drv)
 
 set(requires
             hal_layer
