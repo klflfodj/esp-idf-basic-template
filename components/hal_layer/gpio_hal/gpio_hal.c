@@ -4,6 +4,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "driver/gpio.h"
+#include "esp_log.h"
+
+
+static const char *TAG = "gpio_hal";
+
 
 // 引脚电平掩码
 static uint64_t s_high_mask = 0; 
@@ -13,7 +18,7 @@ static inline bool hal_gpio_check_num(int gpio_num)
 {
     if (!GPIO_IS_VALID_GPIO(gpio_num))
     {
-        printf("gpio_num is out of range\n");
+        ESP_LOGE(TAG, "gpio_num is out of range");
         return false;
     }
     return true;
@@ -52,7 +57,7 @@ bool hal_gpio_init(int gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull, hal
             cfg.mode = GPIO_MODE_INPUT_OUTPUT_OD;
             break;
         default:
-            printf("mode is out of range\n");
+            ESP_LOGE(TAG, "mode is out of range");
             return false;
     }
 
@@ -71,7 +76,7 @@ bool hal_gpio_init(int gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull, hal
             cfg.pull_down_en = GPIO_PULLDOWN_ENABLE;
             break;
         default:
-            printf("pull is out of range\n");
+            ESP_LOGE(TAG, "pull is out of range");
             return false;
     }
 
@@ -96,7 +101,7 @@ bool hal_gpio_init(int gpio_num, hal_gpio_mode_t mode, hal_gpio_pull_t pull, hal
             cfg.intr_type = GPIO_INTR_HIGH_LEVEL;
             break;
         default:
-            printf("intr is out of range\n");
+            ESP_LOGE(TAG, "intr is out of range");
             return false;
     }
 

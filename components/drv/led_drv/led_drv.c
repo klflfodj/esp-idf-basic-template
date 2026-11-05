@@ -4,13 +4,18 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "gpio_hal.h"
+#include "esp_log.h"
+
+
+static const char *TAG = "led_drv";
+
 
 // 初始化LED
 bool drv_led_init(drv_led_t* led, drv_led_cfg_t* cfg)
 {
     if (led == NULL || cfg == NULL)
     {
-        printf("drv_led_init: parameter is NULL\n");
+        ESP_LOGE(TAG, "parameter is NULL"); 
         return false;
     }
 
@@ -21,14 +26,14 @@ bool drv_led_init(drv_led_t* led, drv_led_cfg_t* cfg)
     // 初始化GPIO引脚为输出模式
     if (hal_gpio_init(cfg -> gpio_num, HAL_GPIO_MODE_OUTPUT, pull, HAL_GPIO_INTR_DISABLE) != true)
     {
-        printf("drv_led_init: hal_gpio_init failed\n");
+        ESP_LOGE(TAG, "hal_gpio_init failed"); 
         return false;
     }
 
     // 初始化LED状态为关闭
     if (hal_gpio_set_level(cfg -> gpio_num, !cfg -> level_active) != true)
     {
-        printf("drv_led_init: hal_gpio_set_level failed\n");
+        ESP_LOGE(TAG, "hal_gpio_set_level failed"); 
         return false;
     }
     led -> state = LED_DRV_OFF;

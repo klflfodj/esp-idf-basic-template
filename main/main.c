@@ -2,9 +2,14 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_log.h"
 
 #include "key_drv.h"
 #include "led_drv.h"
+
+
+static const char *TAG = "main";
+
 
 static drv_key_t s_key  = {0};
 static drv_led_t s_led1 = {0};

@@ -5,6 +5,7 @@
 #include "driver/spi_master.h"
 #include "driver/spi_common.h"
 #include "soc/soc_caps.h"
+#include "esp_log.h"
 
 // 一次传输的最大字节数
 #define HAL_SPI_XFER_MAX  256
@@ -17,6 +18,10 @@ typedef struct
     int                 cs_pin; // CS 引脚号
     spi_device_handle_t handle; // SPI 设备句柄
 } spi_dev_slot_t;
+
+
+static const char *TAG = "spi_hal";
+
 
 // 总线是否初始化过
 static bool s_bus_ready[HAL_SPI_HOST_MAX];
@@ -34,7 +39,7 @@ static bool hal_spi_host_resolve(hal_spi_host_t host, spi_host_device_t* out)
         case HAL_SPI_HOST_2: *out = SPI2_HOST; return true;
         case HAL_SPI_HOST_3: *out = SPI3_HOST; return true;
         default:
-            printf("spi_hal: host %d not supported\n", (int)host);
+            ESP_LOGE(TAG, "host %d not supported", (int)host);
             return false;
     }
 }
@@ -49,7 +54,7 @@ static spi_device_handle_t hal_spi_dev_get(hal_spi_host_t host, int cs_pin)
             return s_dev[host][i].handle;
         }
     }
-    printf("spi_hal: cs %d not registered, call hal_spi_dev_add() first\n", cs_pin);
+    ESP_LOGE(TAG, "cs %d not registered, call hal_spi_dev_add() first", cs_pin);
     return NULL;
 }
 
@@ -58,7 +63,7 @@ bool hal_spi_init(const hal_spi_cfg_t* cfg)
 {
     if (cfg == NULL)
     {
-        printf("spi_hal: cfg is NULL\n");
+        ESP_LOGE(TAG, "cfg is NULL"); 
         return false;
     }
 
@@ -89,7 +94,7 @@ bool hal_spi_init(const hal_spi_cfg_t* cfg)
     // 初始化总线
     if (spi_bus_initialize(idf_host, &bus_cfg, SPI_DMA_CH_AUTO) != ESP_OK)
     {
-        printf("spi_hal: bus init failed\n");
+        ESP_LOGE(TAG, "bus init failed");
         return false;
     }
 
@@ -102,7 +107,7 @@ bool hal_spi_dev_add(const hal_spi_dev_cfg_t* cfg)
 {
     if (cfg == NULL)
     {
-        printf("spi_hal: dev cfg is NULL\n");
+        ESP_LOGE(TAG, "dev cfg is NULL"); 
         return false;
     }
 
@@ -117,21 +122,21 @@ bool hal_spi_dev_add(const hal_spi_dev_cfg_t* cfg)
     // 检查总线是否已初始化
     if (!s_bus_ready[cfg->host])
     {
-        printf("spi_hal: call hal_spi_init() first\n");
+        ESP_LOGE(TAG, "call hal_spi_init() first");
         return false;
     }
 
     // 检查模式是否合法
     if (cfg->mode > 3)
     {
-        printf("spi_hal: mode must be 0~3\n");
+        ESP_LOGE(TAG, "mode must be 0~3"); 
         return false;
     }
 
     // 检查频率是否合法
     if (cfg -> freq_hz == 0 || cfg -> freq_hz > 80000000)
     {
-        printf("spi_hal: freq %u out of range\n", (unsigned)cfg->freq_hz);
+        ESP_LOGE(TAG, "freq %u out of range", (unsigned)cfg->freq_hz); 
         return false;
     }
 
@@ -147,7 +152,7 @@ bool hal_spi_dev_add(const hal_spi_dev_cfg_t* cfg)
     // 检查设备槽位是否已满
     if (s_dev_cnt[cfg -> host] >= HAL_SPI_DEV_MAX)
     {
-        printf("spi_hal: too many devices (max %d)\n", HAL_SPI_DEV_MAX);
+        ESP_LOGE(TAG, "too many devices (max %d)", HAL_SPI_DEV_MAX); 
         return false;
     }
 
@@ -164,7 +169,7 @@ bool hal_spi_dev_add(const hal_spi_dev_cfg_t* cfg)
     // 添加设备到总线
     if (spi_bus_add_device(idf_host, &dev_cfg, &handle) != ESP_OK)
     {
-        printf("spi_hal: add device failed\n");
+        ESP_LOGE(TAG, "add device failed"); 
         return false;
     }
 
@@ -180,7 +185,7 @@ bool hal_spi_transfer(hal_spi_host_t host, int cs_pin, const hal_spi_msg_t *msg)
 {
     if (msg == NULL)
     {
-        printf("spi_hal: msg is NULL\n");
+        ESP_LOGE(TAG, "msg is NULL"); 
         return false;
     }
 
@@ -188,14 +193,14 @@ bool hal_spi_transfer(hal_spi_host_t host, int cs_pin, const hal_spi_msg_t *msg)
     if ((msg->tx_len > 0 && msg->tx_buf == NULL) ||
         (msg->rx_len > 0 && msg->rx_buf == NULL))
     {
-        printf("spi_hal: len > 0 but buffer is NULL\n");
+        ESP_LOGE(TAG, "len > 0 but buffer is NULL"); 
         return false;
     }
 
     // 检查传输数据是否为空
     if (msg->tx_len == 0 && msg->rx_len == 0)
     {
-        printf("spi_hal: nothing to do\n");
+        ESP_LOGE(TAG, "nothing to do"); 
         return false;
     }
 
@@ -212,7 +217,7 @@ bool hal_spi_transfer(hal_spi_host_t host, int cs_pin, const hal_spi_msg_t *msg)
     // 检查传输数据是否超过最大传输长度
     if (len > HAL_SPI_XFER_MAX)
     {
-        printf("spi_hal: transfer %u bytes > max %d\n", (unsigned)len, HAL_SPI_XFER_MAX);
+        ESP_LOGE(TAG, "transfer %u bytes > max %d", (unsigned)len, HAL_SPI_XFER_MAX); 
         return false;
     }
 
@@ -253,7 +258,7 @@ bool hal_spi_transfer(hal_spi_host_t host, int cs_pin, const hal_spi_msg_t *msg)
     // 执行传输
     if (spi_device_polling_transmit(dev, &trans) != ESP_OK)
     {
-        printf("spi_hal: transfer failed\n");
+        ESP_LOGE(TAG, "transfer failed"); 
         return false;
     }
 

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "driver/ledc.h"
 #include "soc/soc_caps.h"
+#include "esp_log.h"
 
 // 每个 PWM 通道的最大数量
 #define HAL_PWM_MAX       SOC_LEDC_CHANNEL_NUM  
@@ -13,6 +14,10 @@
 #define HAL_PWM_DUTY_FULL 1000
 // PWM 分辨率，单位：位
 #define HAL_PWM_RES_MAX   SOC_LEDC_TIMER_BIT_WIDTH
+
+
+static const char *TAG = "pwm_hal";
+
 
 // PWM 通道信息数组
 static hal_pwm_info_t s_pwm[HAL_PWM_MAX]; 
@@ -99,7 +104,7 @@ static bool hal_pwm_apply_timer(hal_pwm_info_t* p, uint32_t freq_hz)
     // 配置 LEDC 定时器
     if (ledc_timer_config(&tcfg) != ESP_OK)
     {
-        printf("pwm_hal: timer config failed\n");
+        ESP_LOGE(TAG, "timer config failed");
         return false;
     }
 
@@ -123,7 +128,7 @@ bool hal_pwm_init(const hal_pwm_timer_cfg_t *cfg)
 {
     if (cfg == NULL)
     {
-        printf("pwm_hal: cfg is NULL\n");
+        ESP_LOGE(TAG, "cfg is NULL");
         return false;
     }
 
@@ -134,14 +139,14 @@ bool hal_pwm_init(const hal_pwm_timer_cfg_t *cfg)
     // 检查频率是否在范围内
     if (freq_hz == 0 || freq_hz > 1000000)
     {
-        printf("pwm_hal: freq %lu out of range (1 ~ 1000000)\n", (unsigned long)freq_hz);
+        ESP_LOGE(TAG, "freq %lu out of range (1 ~ 1000000)", (unsigned long)freq_hz);
         return false;
     }
 
     // 检查占空比是否在范围内
     if (duty_permille > HAL_PWM_DUTY_FULL)
     {
-        printf("pwm_hal: duty %lu out of range (0 ~ %d)\n",
+        ESP_LOGE(TAG, "duty %lu out of range (0 ~ %d)",
                (unsigned long)duty_permille, HAL_PWM_DUTY_FULL);
         return false;
     }
@@ -157,7 +162,7 @@ bool hal_pwm_init(const hal_pwm_timer_cfg_t *cfg)
     // 检查是否成功分配槽位
     if (slot < 0)
     {
-        printf("pwm_hal: no free timer (max %d channels)\n", HAL_PWM_MAX);
+        ESP_LOGE(TAG, "no free timer (max %d channels)", HAL_PWM_MAX);
         return false;
     }
 
@@ -189,7 +194,7 @@ bool hal_pwm_init(const hal_pwm_timer_cfg_t *cfg)
     // 配置 LEDC 通道
     if (ledc_channel_config(&ccfg) != ESP_OK)
     {
-        printf("pwm_hal: channel config failed\n");
+        ESP_LOGE(TAG, "channel config failed");
         return false;
     }
 
@@ -201,14 +206,14 @@ bool hal_pwm_set_freq(int pin, uint32_t freq_hz)
 {
     if (freq_hz == 0 || freq_hz > 1000000)
     {
-        printf("pwm_hal: freq %lu out of range\n", (unsigned long)freq_hz);
+        ESP_LOGE(TAG, "freq %lu out of range", (unsigned long)freq_hz);
         return false;
     } 
 
     int slot = hal_pwm_find(pin); 
     if (slot < 0)
     {
-        printf("pwm_hal: pin %d not inited\n", pin);
+        ESP_LOGE(TAG, "pin %d not inited", pin);    
         return false;
     }
 
@@ -229,7 +234,7 @@ bool hal_pwm_set_duty(int pin, uint32_t duty_permille)
     int slot = hal_pwm_find(pin); 
     if (slot < 0)
     {
-        printf("pwm_hal: pin %d not inited\n", pin);
+        ESP_LOGE(TAG, "pin %d not inited", pin);    
         return false;
     }
 
@@ -263,7 +268,7 @@ bool hal_pwm_update(int pin, uint32_t freq_hz, uint32_t duty_permille)
     int slot = hal_pwm_find(pin); 
     if (slot < 0)
     {
-        printf("pwm_hal: pin %d not inited\n", pin);
+        ESP_LOGE(TAG, "pin %d not inited", pin);    
         return false;
     }
 
@@ -303,14 +308,14 @@ bool hal_pwm_get_info(int pin, hal_pwm_info_t *out)
     // 检查输出指针是否为空
     if (out == NULL)
     {
-        printf("pwm_hal: out is NULL\n");
+        ESP_LOGE(TAG, "out is NULL");
         return false;
     }
 
     int slot = hal_pwm_find(pin);
     if (slot < 0)
     {
-        printf("pwm_hal: pin %d not inited\n", pin);
+        ESP_LOGE(TAG, "pin %d not inited", pin);    
         return false;
     }
 

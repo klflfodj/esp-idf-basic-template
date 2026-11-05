@@ -3,11 +3,17 @@
 #include <stdio.h>
 #include "driver/i2c_master.h"
 #include "soc/soc_caps.h"
+#include "esp_log.h"
 
 // IIC 传输超时时间，单位：毫秒
 #define HAL_IIC_XFER_TIMEOUT_MS   1000
 // 每条总线上的最大设备地址
 #define HAL_IIC_DEV_MAX           8
+
+
+static const char* TAG = "iic_hal";
+
+
 // IIC 总线句柄
 static i2c_master_bus_handle_t s_bus[SOC_I2C_NUM] = {0};
 // IIC 总线频率，单位：赫兹
@@ -30,7 +36,7 @@ static bool hal_iic_bus_check(hal_iic_bus_t bus)
 {
     if ((int)bus < 0 || (int)bus >= SOC_I2C_NUM)
     {
-        printf("iic_hal: bus %d does not exist\n", (int)bus);
+        ESP_LOGE(TAG, "bus %d does not exist", (int)bus);
         return false;
     }
     return true;
@@ -52,7 +58,7 @@ static i2c_master_dev_handle_t hal_iic_dev_get(hal_iic_bus_t bus, uint8_t addr)
     // 检查总线是否已满
     if (s_dev_cnt[bus] >= HAL_IIC_DEV_MAX)
     {
-        printf("iic_hal: too many devices on bus %d (max %d)\n",
+        ESP_LOGE(TAG, "too many devices on bus %d (max %d)",
                (int)bus, HAL_IIC_DEV_MAX);
         return NULL;
     }
@@ -71,7 +77,7 @@ static i2c_master_dev_handle_t hal_iic_dev_get(hal_iic_bus_t bus, uint8_t addr)
     // 加入总线
     if (i2c_master_bus_add_device(s_bus[bus], &dev_cfg, &handle) != ESP_OK)
     {
-        printf("iic_hal: add device 0x%02X failed\n", addr);
+        ESP_LOGE(TAG, "add device 0x%02X failed", addr);
         return NULL;
     }
 
@@ -93,14 +99,14 @@ static i2c_master_dev_handle_t hal_iic_dev_acquire(hal_iic_bus_t bus, uint8_t ad
 
     if (s_bus[bus] == NULL)
     {
-        printf("iic_hal: bus %d not inited\n", (int)bus);
+        ESP_LOGE(TAG, "bus %d not inited", (int)bus);
         return NULL;
     }
 
     // 检查地址是否为 7 位
     if (addr > 0x7F)
     {
-        printf("iic_hal: addr 0x%02X is not a 7-bit address (try >> 1)\n", addr);
+        ESP_LOGE(TAG, "addr 0x%02X is not a 7-bit address (try >> 1)", addr);
         return NULL;
     }
 
@@ -113,7 +119,7 @@ bool hal_iic_init(const hal_iic_cfg_t *cfg)
 {
     if (cfg == NULL)
     {
-        printf("iic_hal: cfg is NULL\n");
+        ESP_LOGE(TAG, "cfg is NULL");
         return false;
     }
 
@@ -132,7 +138,7 @@ bool hal_iic_init(const hal_iic_cfg_t *cfg)
 
     if (cfg->freq_hz < 1000 || cfg->freq_hz > 1000000)
     {
-        printf("iic_hal: freq %u out of range (1000 ~ 1000000)\n",
+        ESP_LOGE(TAG, "freq %u out of range (1000 ~ 1000000)",
                (unsigned)cfg->freq_hz);
         return false;
     }
@@ -150,7 +156,7 @@ bool hal_iic_init(const hal_iic_cfg_t *cfg)
 
     if (i2c_new_master_bus(&bus_cfg, &s_bus[bus]) != ESP_OK)
     {
-        printf("iic_hal: new master bus failed\n");
+        ESP_LOGE(TAG, "new master bus failed");
         return false;
     }
 
@@ -164,7 +170,7 @@ bool hal_iic_transfer(hal_iic_bus_t bus, const hal_iic_msg_t *msg)
 {
     if (msg == NULL)
     {
-        printf("iic_hal: msg is NULL\n");
+        ESP_LOGE(TAG, "msg is NULL");
         return false;
     }
 
@@ -172,13 +178,13 @@ bool hal_iic_transfer(hal_iic_bus_t bus, const hal_iic_msg_t *msg)
     if ((msg->tx_len > 0 && msg->tx_buf == NULL) ||
         (msg->rx_len > 0 && msg->rx_buf == NULL))
     {
-        printf("iic_hal: tx_buf or rx_buf is NULL\n");
+        ESP_LOGE(TAG, "tx_buf or rx_buf is NULL");
         return false;
     }
 
     if (msg->tx_len == 0 && msg->rx_len == 0)
     {
-        printf("iic_hal: tx_len and rx_len are both 0\n");
+        ESP_LOGE(TAG, "tx_len and rx_len are both 0");
         return false;
     }
 
@@ -213,7 +219,7 @@ bool hal_iic_transfer(hal_iic_bus_t bus, const hal_iic_msg_t *msg)
 
     if (err != ESP_OK)
     {
-        printf("iic_hal: transfer to 0x%02X failed: %s\n",
+        ESP_LOGW(TAG, "transfer to 0x%02X failed: %s",
                msg->addr, esp_err_to_name(err));
         return false;
     }
@@ -289,7 +295,7 @@ bool hal_iic_probe(hal_iic_bus_t bus, uint8_t addr)
 
     if (s_bus[bus] == NULL)
     {
-        printf("iic_hal: bus %d not inited\n", (int)bus);
+        ESP_LOGE(TAG, "bus %d not inited", (int)bus);
         return false;
     }
 

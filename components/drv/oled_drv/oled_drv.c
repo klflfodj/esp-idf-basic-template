@@ -7,6 +7,7 @@
 #include "esp_rom_sys.h"
 #include "u8g2.h"
 #include "iic_hal.h"
+#include "esp_log.h"
 
 // OLED 初始化函数指针
 typedef void (*oled_setup_fn_t)(u8g2_t *u8g2, const u8g2_cb_t *rotation,
@@ -19,6 +20,10 @@ typedef struct
     uint8_t         width;  // OLED 宽度
     uint8_t         height; // OLED 高度
 } oled_model_t;
+
+
+static const char *TAG = "oled_drv";
+
 
 // OLED 型号数组
 static const oled_model_t s_model[OLED_TYPE_MAX] = 
@@ -68,7 +73,7 @@ static uint8_t oled_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *ar
         case U8X8_MSG_BYTE_SEND:
             if ((uint32_t)s_buf_len + arg_int > OLED_BUF_MAX)
             {
-                printf("oled: buf overflow (%u + %u)\n",
+                ESP_LOGE(TAG, "buf overflow (%u + %u)",
                        (unsigned)s_buf_len, (unsigned)arg_int);// 缓冲区溢出，返回 0
                 return 0;
             }
@@ -145,21 +150,21 @@ bool oled_init(const oled_cfg_t *cfg)
     // 检查配置是否有效
     if (cfg == NULL)
     {
-        printf("oled: cfg is NULL\n");
+        ESP_LOGE(TAG, "cfg is NULL"); 
         return false;
     }
 
     // 检查型号是否有效
     if ((int)cfg->type < 0 || cfg->type >= OLED_TYPE_MAX)
     {
-        printf("oled: invalid type %d\n", (int)cfg->type);
+        ESP_LOGE(TAG, "invalid type %d", (int)cfg->type); 
         return false;
     }
 
     // 检查地址是否为 7 位
     if (cfg->addr_7bit > 0x7F)
     {
-        printf("oled: addr 0x%02X is not 7-bit (try >> 1)\n", cfg->addr_7bit);
+        ESP_LOGE(TAG, "addr 0x%02X is not 7-bit (try >> 1)", cfg->addr_7bit); 
         return false;
     }
 
@@ -175,13 +180,13 @@ bool oled_init(const oled_cfg_t *cfg)
 
     if (!hal_iic_init(&iic_cfg))
     {
-        printf("oled: iic init failed\n");
+        ESP_LOGE(TAG, "iic init failed"); 
         return false;
     }
 
     if (!hal_iic_probe(cfg->bus, cfg->addr_7bit))
     {
-        printf("oled: no device at 0x%02X (check wiring / addr / pullup)\n",cfg->addr_7bit);
+        ESP_LOGE(TAG, "no device at 0x%02X (check wiring / addr / pullup)", cfg->addr_7bit); 
         return false;
     }
 

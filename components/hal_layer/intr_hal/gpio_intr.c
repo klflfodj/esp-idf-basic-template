@@ -2,6 +2,11 @@
 
 #include <stdio.h>
 #include "driver/gpio.h"
+#include "esp_log.h"
+
+
+static const char *TAG = "gpio_intr";
+
 
 // GPIO中断服务是否已安装
 static bool s_isr_service_installed = false;
@@ -17,7 +22,7 @@ bool hal_gpio_isr_init(void)
     esp_err_t err = gpio_install_isr_service(0);
     if (err != ESP_OK)
     {
-        printf("hal_gpio_isr_init: %s\n", esp_err_to_name(err));
+        ESP_LOGE(TAG, "%s", esp_err_to_name(err));
         return false;
     }
 
@@ -35,14 +40,14 @@ bool hal_gpio_isr_register(int gpio_num, hal_gpio_isr_cb_t cb, void *arg)
 
     if (!s_isr_service_installed)
     {
-        printf("hal_gpio_isr_register: call hal_gpio_isr_init() first\n");
+        ESP_LOGE(TAG, "call hal_gpio_isr_init() first");
         return false;
     }
 
     esp_err_t err = gpio_isr_handler_add(gpio_num, cb, arg);
     if (err != ESP_OK)
     {
-        printf("hal_gpio_isr_register: %s\n", esp_err_to_name(err));
+        ESP_LOGE(TAG, "%s", esp_err_to_name(err));
         return false;
     }
 

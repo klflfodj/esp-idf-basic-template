@@ -6,12 +6,17 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "soc/soc_caps.h"
 #include "esp_adc/adc_continuous.h"
+#include "esp_log.h"
 
 #define HAL_ADC_UNIT_CNT   SOC_ADC_PERIPH_NUM           //  ADC 单元数量
 #define HAL_ADC_CHAN_CNT   SOC_ADC_MAX_CHANNEL_NUM      //  ADC 通道数量
 
 #define HAL_ADC_FRAME_SAMPLES   128                     //  每个 DMA 帧的样本数
 #define HAL_ADC_PARSE_MAX       HAL_ADC_FRAME_SAMPLES   //  最大解析样本数
+
+
+static const char *TAG = "adc_hal";
+
 
 // 单元句柄
 static adc_oneshot_unit_handle_t s_unit_handle[HAL_ADC_UNIT_CNT] = {0};// ADC 单元句柄数组
@@ -46,7 +51,7 @@ static bool hal_adc_io_resolve(int gpio_num, adc_unit_t* out_unit, adc_channel_t
 {
     if (adc_oneshot_io_to_channel(gpio_num, out_unit, out_chan) != ESP_OK)
     {
-        printf("adc_hal: gpio %d is not an ADC pin\n", gpio_num);
+        ESP_LOGE(TAG, "gpio %d is not an ADC pin", gpio_num);
         return false;
     }
     return true;
@@ -69,7 +74,7 @@ static bool hal_adc_unit_ensure(adc_unit_t unit)
 
     if (adc_oneshot_new_unit(&init_cfg, &s_unit_handle[unit]) != ESP_OK)
     {
-        printf("adc_hal: create adc unit failed\n");
+        ESP_LOGE(TAG, "create adc unit failed");
         return false;
     }
     return true;
@@ -100,7 +105,7 @@ static bool hal_adc_cali_ensure(adc_unit_t unit, adc_channel_t chan, adc_atten_t
 
     if (adc_cali_create_scheme_line_fitting(&cali_cfg, &s_cali_handle[unit][chan]) != ESP_OK)
     {
-        printf("adc_hal: create calibration failed\n");
+        ESP_LOGE(TAG, "create calibration failed");
         return false;
     }
 
@@ -114,7 +119,7 @@ bool hal_adc_init(int gpio_num, hal_adc_range_t range)
 {
     if (range >= HAL_ADC_RANGE_MAX)
     {
-        printf("adc_hal: invalid range %d\n", range);
+        ESP_LOGE(TAG, "invalid range %d", range);
         return false;
     }
 
@@ -130,7 +135,7 @@ bool hal_adc_init(int gpio_num, hal_adc_range_t range)
     // 检查单元是否已初始化
     if (s_unit_mode[unit] == HAL_ADC_MODE_CONT)
     {
-        printf("adc_hal: adc%d is in continuous mode\n", unit + 1);
+        ESP_LOGE(TAG, "adc%d is in continuous mode", unit + 1);
         return false;
     }
 
@@ -153,7 +158,7 @@ bool hal_adc_init(int gpio_num, hal_adc_range_t range)
     // 配置通道
      if (adc_oneshot_config_channel(s_unit_handle[unit], chan, &chan_cfg) != ESP_OK)
     {
-        printf("adc_hal: config channel failed\n");
+        ESP_LOGE(TAG, "config channel failed");
         return false;
     }
 
@@ -173,7 +178,7 @@ bool hal_adc_read_raw(int gpio_num, int* out_raw)
 {
     if (out_raw == NULL)
     {
-        printf("adc_hal: out_raw is NULL\n");
+        ESP_LOGE(TAG, "out_raw is NULL");
         return false;
     }
 
@@ -189,7 +194,7 @@ bool hal_adc_read_raw(int gpio_num, int* out_raw)
     // 检查通道是否已初始化
     if (!s_chan_ready[unit][chan])
     {
-        printf("adc_hal: gpio %d not inited, call hal_adc_init() first\n", gpio_num);
+        ESP_LOGE(TAG, "gpio %d not inited, call hal_adc_init() first", gpio_num);
         return false;
     }
 
@@ -202,7 +207,7 @@ bool hal_adc_read_mv(int gpio_num, int* out_mv)
 {
     if (out_mv == NULL)
     {
-        printf("adc_hal: out_mv is NULL\n");
+        ESP_LOGE(TAG, "out_mv is NULL");
         return false;
     }
 
@@ -216,7 +221,7 @@ bool hal_adc_read_mv(int gpio_num, int* out_mv)
 
     if (!s_chan_ready[unit][chan] || s_cali_handle[unit][chan] == NULL)
     {
-        printf("adc_hal: gpio %d not inited, call hal_adc_init() first\n", gpio_num);
+        ESP_LOGE(TAG, "gpio %d not inited, call hal_adc_init() first", gpio_num);
         return false;
     } 
 
@@ -230,7 +235,7 @@ bool hal_adc_init_continuous(int gpio_num, hal_adc_range_t range, uint32_t sampl
     // 检查范围是否有效
     if (range >= HAL_ADC_RANGE_MAX)
     {
-        printf("adc_hal: invalid range %d\n", (int)range);
+        ESP_LOGE(TAG, "invalid range %d", (int)range);
         return false;
     }
 
@@ -246,7 +251,7 @@ bool hal_adc_init_continuous(int gpio_num, hal_adc_range_t range, uint32_t sampl
     // 检查采样频率是否有效
     if (sample_hz < SOC_ADC_SAMPLE_FREQ_THRES_LOW || sample_hz > SOC_ADC_SAMPLE_FREQ_THRES_HIGH)
     {
-        printf("adc_hal: sample_hz must be %d ~ %d\n",
+        ESP_LOGE(TAG, "sample_hz must be %d ~ %d",
                SOC_ADC_SAMPLE_FREQ_THRES_LOW, SOC_ADC_SAMPLE_FREQ_THRES_HIGH);
         return false;
     }
@@ -254,7 +259,7 @@ bool hal_adc_init_continuous(int gpio_num, hal_adc_range_t range, uint32_t sampl
     // 检查单元是否冲突
     if (s_unit_mode[unit] == HAL_ADC_MODE_ONESHOT)
     {
-        printf("adc_hal: adc%d is used by oneshot mode\n", unit + 1);
+        ESP_LOGE(TAG, "adc%d is used by oneshot mode", unit + 1);
         return false;
     }
 
@@ -265,7 +270,7 @@ bool hal_adc_init_continuous(int gpio_num, hal_adc_range_t range, uint32_t sampl
         {
             return true;        // 同一路，幂等
         }
-        printf("adc_hal: adc%d continuous already on channel %d\n",
+        ESP_LOGE(TAG, "adc%d continuous already on channel %d",
                unit + 1, (int)s_cont_chan[unit]);
         return false;
     }
@@ -280,7 +285,7 @@ bool hal_adc_init_continuous(int gpio_num, hal_adc_range_t range, uint32_t sampl
     // 创建连续读取句柄
     if (adc_continuous_new_handle(&hal_cfg, &s_cont_handle[unit]) != ESP_OK)
     {
-        printf("adc_hal: new handle failed\n");
+        ESP_LOGE(TAG, "new handle failed");
         return false;
     }
 
@@ -308,7 +313,7 @@ bool hal_adc_init_continuous(int gpio_num, hal_adc_range_t range, uint32_t sampl
     // 配置连续读取
     if (adc_continuous_config(s_cont_handle[unit], &cont_cfg) != ESP_OK)
     {
-        printf("adc_hal: continuous config failed\n");
+        ESP_LOGE(TAG, "continuous config failed");
         (void)adc_continuous_deinit(s_cont_handle[unit]);  // 初始化失败，释放句柄
         s_cont_handle[unit] = NULL;
         return false;
@@ -317,7 +322,7 @@ bool hal_adc_init_continuous(int gpio_num, hal_adc_range_t range, uint32_t sampl
     // 启动连续读取
     if (adc_continuous_start(s_cont_handle[unit]) != ESP_OK)
     {
-        printf("adc_hal: continuous start failed\n");
+        ESP_LOGE(TAG, "continuous start failed");
         (void)adc_continuous_deinit(s_cont_handle[unit]);
         s_cont_handle[unit] = NULL;
         return false;
@@ -353,7 +358,7 @@ bool hal_adc_continuous_read(int gpio_num, int *raw_buf, size_t max_cnt, size_t 
     // 检查连续读取是否柄是否有效
     if (s_unit_mode[unit] != HAL_ADC_MODE_CONT)
     {
-        printf("adc_hal: continuous not started on adc%d\n", unit + 1);
+        ESP_LOGE(TAG, "continuous not started on adc%d", unit + 1);
         return false;
     }
 

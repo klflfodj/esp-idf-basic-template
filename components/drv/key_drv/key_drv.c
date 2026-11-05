@@ -4,6 +4,11 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "gpio_hal.h"
+#include "esp_log.h"
+
+
+static const char *TAG = "key_drv";
+
 
 // 记录修改按键事件
 static void drv_key_emit(drv_key_t* key, drv_key_event_t evt)
@@ -137,13 +142,13 @@ bool drv_key_init(drv_key_t* key,const drv_key_cfg_t* cfg)
 {
     if (key == NULL || cfg == NULL)
     {
-        printf("drv_key_init: parameter is NULL\n");
+        ESP_LOGE(TAG, "parameter is NULL"); 
         return false;
     }
 
     if (cfg -> on_event == NULL || cfg -> events == DRV_KEY_EVT_NONE)
     {
-        printf("drv_key_init: need events and callback\n");
+        ESP_LOGE(TAG, "need events and callback"); 
         return false;
     }
 
@@ -153,14 +158,14 @@ bool drv_key_init(drv_key_t* key,const drv_key_cfg_t* cfg)
 
     if (!hal_gpio_init(cfg->gpio_num, HAL_GPIO_MODE_INPUT, pull, 0))
     {
-        printf("drv_key_init: hal_gpio_init failed\n");
+        ESP_LOGE(TAG, "hal_gpio_init failed"); 
         return false;
     }
 
     bool level = false;
     if (!hal_gpio_read(cfg -> gpio_num, &level))
     {
-        printf("drv_key_init: hal_gpio_read failed\n");
+        ESP_LOGE(TAG, "hal_gpio_read failed"); 
         return false;
     }
 
@@ -179,7 +184,7 @@ bool drv_key_init(drv_key_t* key,const drv_key_cfg_t* cfg)
     {
         if (xTaskCreate(drv_key_scan_task, "key_scan", 3072, key, 5, NULL) != pdPASS)
         {
-            printf("drv_key_init: xTaskCreate failed\n");
+            ESP_LOGE(TAG, "xTaskCreate failed"); 
             return false;
         }
         key ->task_started = true;
