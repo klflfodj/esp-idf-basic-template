@@ -26,7 +26,7 @@ static bool     s_inited  = false;
 static bool     s_ready   = false;
 
 // 初始化电位器
-bool pot_init(const pot_cfg_t *cfg)
+bool drv_pot_init(const drv_pot_cfg_t *cfg)
 {
     if (cfg == NULL)
     {
@@ -64,13 +64,13 @@ bool pot_init(const pot_cfg_t *cfg)
 }
 
 // 检查电位器是否就绪
-bool pot_is_ready(void)
+bool drv_pot_is_ready(void)
 {
     return s_ready;
 }
 
 // 获取电位器原始值
-uint16_t pot_get_raw(void)
+uint16_t drv_pot_read_raw(void)
 {
     if (!s_inited)
     {
@@ -104,7 +104,7 @@ uint16_t pot_get_raw(void)
 }
 
 // 读取电位器权限值
-bool pot_read_permission(uint16_t *out_permille)
+bool drv_pot_read_permille(uint16_t *out_permille)
 {
     if (out_permille == NULL)
     {
@@ -116,7 +116,7 @@ bool pot_read_permission(uint16_t *out_permille)
         return false;
     }
 
-    uint16_t raw = pot_get_raw();
+    uint16_t raw = drv_pot_read_raw();
 
     // 检查是否超出范围, 如果超出范围, 则返回0或1000
     if (raw <= s_min_raw)
@@ -141,11 +141,11 @@ bool pot_read_permission(uint16_t *out_permille)
 }
 
 // 设置电位器范围
-bool pot_set_range(uint16_t min_raw, uint16_t max_raw)
+bool drv_pot_set_range(uint16_t min_raw, uint16_t max_raw)
 {
     if (!s_inited)
     {
-        ESP_LOGE(TAG, "call pot_init() first");
+        ESP_LOGE(TAG, "call drv_pot_init() first");
         return false;
     }
 
@@ -182,7 +182,7 @@ bool pot_set_range(uint16_t min_raw, uint16_t max_raw)
 }
 
 // 获取电位器范围
-bool pot_get_range(uint16_t *min_raw, uint16_t *max_raw)
+bool drv_pot_get_range(uint16_t *min_raw, uint16_t *max_raw)
 {
     if (min_raw == NULL || max_raw == NULL)
     {

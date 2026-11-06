@@ -10,27 +10,27 @@
 #include "esp_log.h"
 
 // OLED 初始化函数指针
-typedef void (*oled_setup_fn_t)(u8g2_t *u8g2, const u8g2_cb_t *rotation,
+typedef void (*drv_oled_setup_fn_t)(u8g2_t *u8g2, const u8g2_cb_t *rotation,
                                 u8x8_msg_cb byte_cb, u8x8_msg_cb gpio_and_delay_cb);
 
 // OLED 型号
 typedef struct
 {
-    oled_setup_fn_t setup;  // OLED 初始化函数指针
+    drv_oled_setup_fn_t setup;  // OLED 初始化函数指针
     uint8_t         width;  // OLED 宽度
     uint8_t         height; // OLED 高度
-} oled_model_t;
+} drv_oled_model_t;
 
 
 static const char *TAG = "oled_drv";
 
 
 // OLED 型号数组
-static const oled_model_t s_model[OLED_TYPE_MAX] = 
+static const drv_oled_model_t s_model[DRV_OLED_TYPE_MAX] = 
 {
-    [OLED_TYPE_SSD1306_128X64] = { u8g2_Setup_ssd1306_i2c_128x64_noname_f,    128, 64 },
-    [OLED_TYPE_SH1106_128X64]  = { u8g2_Setup_sh1106_i2c_128x64_noname_f,     128, 64 },
-    [OLED_TYPE_SSD1306_128X32] = { u8g2_Setup_ssd1306_i2c_128x32_univision_f, 128, 32 },
+    [DRV_OLED_TYPE_SSD1306_128X64] = { u8g2_Setup_ssd1306_i2c_128x64_noname_f,    128, 64 },
+    [DRV_OLED_TYPE_SH1106_128X64]  = { u8g2_Setup_sh1106_i2c_128x64_noname_f,     128, 64 },
+    [DRV_OLED_TYPE_SSD1306_128X32] = { u8g2_Setup_ssd1306_i2c_128x32_univision_f, 128, 32 },
 };
 
 
@@ -57,7 +57,7 @@ static uint16_t       s_buf_len = 0;       // 缓冲区长度
 static uint8_t        s_addr    = 0x3C;    // OLED 地址
 
 // OLED 字节回调函数
-static uint8_t oled_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
+static uint8_t drv_oled_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {
     switch (msg)
     {
@@ -104,7 +104,7 @@ static uint8_t oled_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *ar
 }
 
 // OLED GPIO 延时回调函数
-static uint8_t oled_gpio_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
+static uint8_t drv_oled_gpio_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {
     switch (msg)
     {
@@ -129,23 +129,23 @@ static uint8_t oled_gpio_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, vo
 }
 
 // OLED 宽度
-uint8_t oled_width(void)       { return s_width; }
+uint8_t drv_oled_width(void)       { return s_width; }
 // OLED 高度
-uint8_t oled_height(void)      { return s_height; }
+uint8_t drv_oled_height(void)      { return s_height; }
 
 // OLED 最大行数
-uint8_t oled_max_line(void)
+uint8_t drv_oled_max_line(void)
 {
     return (FontHeight > 0) ? (uint8_t)(s_height / FontHeight) : 0;
 }
 
 // OLED 最大列数
-uint8_t oled_max_col(void)
+uint8_t drv_oled_max_col(void)
 {
     return (FontWidth > 0) ? (uint8_t)(s_width / FontWidth) : 0;
 }
 
-bool oled_init(const oled_cfg_t *cfg)
+bool drv_oled_init(const drv_oled_cfg_t *cfg)
 {
     // 检查配置是否有效
     if (cfg == NULL)
@@ -155,7 +155,7 @@ bool oled_init(const oled_cfg_t *cfg)
     }
 
     // 检查型号是否有效
-    if ((int)cfg->type < 0 || cfg->type >= OLED_TYPE_MAX)
+    if ((int)cfg->type < 0 || cfg->type >= DRV_OLED_TYPE_MAX)
     {
         ESP_LOGE(TAG, "invalid type %d", (int)cfg->type); 
         return false;
@@ -168,7 +168,7 @@ bool oled_init(const oled_cfg_t *cfg)
         return false;
     }
 
-    const oled_model_t *model = &s_model[cfg -> type];
+    const drv_oled_model_t *model = &s_model[cfg -> type];
 
     hal_iic_cfg_t iic_cfg = 
     {
@@ -195,7 +195,7 @@ bool oled_init(const oled_cfg_t *cfg)
     s_height = model->height;   // 记录高度
 
     // 初始化 OLED
-    model->setup(&s_u8g2, U8G2_R0, oled_byte_cb, oled_gpio_delay_cb);
+    model->setup(&s_u8g2, U8G2_R0, drv_oled_byte_cb, drv_oled_gpio_delay_cb);
 
     // 设置 OLED 地址
     u8x8_SetI2CAddress(u8g2_GetU8x8(&s_u8g2), (uint8_t)(cfg->addr_7bit << 1));
@@ -205,32 +205,32 @@ bool oled_init(const oled_cfg_t *cfg)
     // 关闭显示
     u8g2_SetPowerSave(&s_u8g2, 0);
 
-    oled_set_font((cfg->font != NULL) ? cfg->font : u8g2_font_8x13_tr);
+    drv_oled_set_font((cfg->font != NULL) ? cfg->font : u8g2_font_8x13_tr);
 
     s_ready = true;  // 标记为已初始化
 
-    oled_clear();
-    oled_update();
+    drv_oled_clear();
+    drv_oled_update();
 
     return true;
 }
 
 // 清空显示缓冲区
-void oled_clear(void)
+void drv_oled_clear(void)
 {
     OLED_GUARD();
     u8g2_ClearBuffer(&s_u8g2);  // 清空显示缓冲区
 }
 
 // 更新显示
-void oled_update(void)
+void drv_oled_update(void)
 {
     OLED_GUARD();
     u8g2_SendBuffer(&s_u8g2);  // 发送缓冲区数据到 OLED
 }
 
 // 设置字体
-void oled_set_font(const uint8_t *font)
+void drv_oled_set_font(const uint8_t *font)
 {
     if (font == NULL)
     {
@@ -245,7 +245,7 @@ void oled_set_font(const uint8_t *font)
 }
 
 // 打印字符串
-void oled_print(uint8_t Line, uint8_t Column, const char *String)
+void drv_oled_print(uint8_t Line, uint8_t Column, const char *String)
 {
     OLED_GUARD();
 
@@ -255,8 +255,8 @@ void oled_print(uint8_t Line, uint8_t Column, const char *String)
         return;
     }
     // 检查行和列是否有效
-    if (Line < 1 || Line > oled_max_line() ||
-        Column < 1 || Column > oled_max_col())
+    if (Line < 1 || Line > drv_oled_max_line() ||
+        Column < 1 || Column > drv_oled_max_col())
     {
         return;
     }
@@ -268,7 +268,7 @@ void oled_print(uint8_t Line, uint8_t Column, const char *String)
 }
 
 // 打印格式化字符串
-void oled_printf(uint8_t Line, uint8_t Column, const char *fmt, ...)
+void drv_oled_printf(uint8_t Line, uint8_t Column, const char *fmt, ...)
 {
     if (fmt == NULL)
     {
@@ -281,11 +281,11 @@ void oled_printf(uint8_t Line, uint8_t Column, const char *fmt, ...)
     vsnprintf(str, sizeof(str), fmt, args); // 格式化字符串
     va_end(args);                          // 结束可变参数列表
 
-    oled_print(Line, Column, str);
+    drv_oled_print(Line, Column, str);
 }
 
 // 打印数字
-void oled_print_num(uint8_t Line, uint8_t Column, float Num,
+void drv_oled_print_num(uint8_t Line, uint8_t Column, float Num,
                     uint8_t DecimalPlaces, uint8_t ShowSign)
 {
     char str[20];  // 格式化字符串缓冲区
@@ -299,11 +299,11 @@ void oled_print_num(uint8_t Line, uint8_t Column, float Num,
         snprintf(str, sizeof(str), "%.*f", DecimalPlaces, Num);  // 格式化无符号
     }
 
-    oled_print(Line, Column, str);
+    drv_oled_print(Line, Column, str);
 }
 
 // 绘制像素点
-void oled_draw_pixel(uint8_t x, uint8_t y)
+void drv_oled_draw_pixel(uint8_t x, uint8_t y)
 {
     OLED_GUARD();
     if (x >= s_width || y >= s_height)  // 检查坐标是否有效
@@ -314,7 +314,7 @@ void oled_draw_pixel(uint8_t x, uint8_t y)
 }
 
 // 绘制线
-void oled_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
+void drv_oled_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
     OLED_GUARD();
     if (x1 >= s_width || y1 >= s_height || x2 >= s_width || y2 >= s_height)  // 检查坐标是否有效
@@ -325,7 +325,7 @@ void oled_draw_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 }
 
 // 绘制框
-void oled_draw_frame(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+void drv_oled_draw_frame(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
     OLED_GUARD();
     if (w == 0 || h == 0)  // 检查参数是否有效
@@ -340,7 +340,7 @@ void oled_draw_frame(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 }
 
 // 绘制矩形
-void oled_draw_box(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
+void drv_oled_draw_box(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
     OLED_GUARD();
     if (w == 0 || h == 0)  // 检查参数是否有效
@@ -355,7 +355,7 @@ void oled_draw_box(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 }
 
 // 绘制空心圆
-void oled_draw_circle(uint8_t x, uint8_t y, uint8_t r)
+void drv_oled_draw_circle(uint8_t x, uint8_t y, uint8_t r)
 {
     OLED_GUARD();
     if (r == 0 || (uint16_t)x + r > s_width || (uint16_t)y + r > s_height)  // 检查参数是否有效
@@ -366,7 +366,7 @@ void oled_draw_circle(uint8_t x, uint8_t y, uint8_t r)
 }
 
 // 绘制实心圆
-void oled_draw_disc(uint8_t x, uint8_t y, uint8_t r)
+void drv_oled_draw_disc(uint8_t x, uint8_t y, uint8_t r)
 {
     OLED_GUARD();
     if (r == 0 || (uint16_t)x + r > s_width || (uint16_t)y + r > s_height)  // 检查参数是否有效
@@ -377,7 +377,7 @@ void oled_draw_disc(uint8_t x, uint8_t y, uint8_t r)
 }
 
 // 绘制位图
-void oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t w, uint8_t h, const uint8_t *bitmap)
+void drv_oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t w, uint8_t h, const uint8_t *bitmap)
 {
     OLED_GUARD();
     if (bitmap == NULL || w == 0 || h == 0)  // 检查参数是否有效
@@ -392,7 +392,7 @@ void oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t w, uint8_t h, const uint8_t 
 }
 
 // 镜像
-void oled_mirror(uint8_t H, uint8_t V)
+void drv_oled_mirror(uint8_t H, uint8_t V)
 {
     OLED_GUARD();
 
