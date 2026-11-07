@@ -54,6 +54,7 @@ static uint8_t servo_us_to_angle(const drv_servo_t *s, uint16_t us)
                      (s->max_us - s->min_us));
 }
 
+// 初始化舵机
 bool drv_servo_init(drv_servo_t *s, const drv_servo_cfg_t *cfg)
 {
     if (s == NULL || cfg == NULL)

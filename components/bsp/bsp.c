@@ -28,7 +28,7 @@ drv_key_t g_key;
 // 没写的字段自动是 0，不会是垃圾值
 
 // ---------- OLED ---------- //
-static const drv_oled_cfg_t s_oled_cfg =
+/*static const drv_oled_cfg_t s_oled_cfg =
 {
     .type      = BSP_OLED_TYPE,
     .bus       = HAL_IIC_BUS_0,
@@ -43,7 +43,7 @@ static const drv_oled_cfg_t s_oled_cfg =
 static const drv_pot_cfg_t s_pot_cfg =
 {
     .gpio_num = BSP_POT_ADC_PIN,
-};
+};*/
 
 // ---------- 舵机 ---------- //
 static const drv_servo_cfg_t s_servo_cfg =
@@ -55,7 +55,7 @@ static const drv_servo_cfg_t s_servo_cfg =
 };
 
 // ---------- LED ---------- //
-static drv_led_cfg_t s_led1_cfg =
+/*static drv_led_cfg_t s_led1_cfg =
 {
     .gpio_num     = BSP_LED1_PIN,
     .level_active = BSP_LED_ACTIVE_LEVEL,
@@ -73,14 +73,14 @@ static drv_led_cfg_t s_led3_cfg =
 {
     .gpio_num     = BSP_LED3_PIN,
     .level_active = BSP_LED_ACTIVE_LEVEL,
-};
+};*/
 
 // ========== 初始化 ========== //
 bool bsp_init(void)
 {
     bool ok = true;
 
-    if (!drv_oled_init(&s_oled_cfg))
+    /*if (!drv_oled_init(&s_oled_cfg))
     {
         ESP_LOGE(TAG, "oled init failed");
         ok = false;
@@ -90,7 +90,7 @@ bool bsp_init(void)
     {
         ESP_LOGE(TAG, "pot init failed");
         ok = false;
-    }
+    }*/
 
     if (!drv_servo_init(&g_servo, &s_servo_cfg))
     {
@@ -98,7 +98,7 @@ bool bsp_init(void)
         ok = false;
     }
 
-    if (!drv_led_init(&g_led1, &s_led1_cfg))
+    /*if (!drv_led_init(&g_led1, &s_led1_cfg))
     {
         ESP_LOGE(TAG, "led1 init failed");
         ok = false;
@@ -112,7 +112,7 @@ bool bsp_init(void)
     {
         ESP_LOGE(TAG, "led3 init failed");
         ok = false;
-    }
+    }*/
 
     // 按键不在这里：它需要业务回调，用 bsp_key_init()
 
