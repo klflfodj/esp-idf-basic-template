@@ -268,6 +268,19 @@ void drv_oled_print(uint8_t Line, uint8_t Column, const char *String)
     u8g2_DrawUTF8(&s_u8g2, x, y, String);
 }
 
+// 打印字符串（像素）
+void drv_oled_text(uint8_t x, uint8_t y, const char *String)
+{
+    OLED_GUARD();
+
+    if (String == NULL || FontWidth == 0 || FontHeight == 0)
+    {
+        return;
+    }
+
+    u8g2_DrawUTF8(&s_u8g2, x, y, String);
+}
+
 // 打印格式化字符串
 void drv_oled_printf(uint8_t Line, uint8_t Column, const char *fmt, ...)
 {
@@ -283,6 +296,23 @@ void drv_oled_printf(uint8_t Line, uint8_t Column, const char *fmt, ...)
     va_end(args);                          // 结束可变参数列表
 
     drv_oled_print(Line, Column, str);
+}
+
+// 打印格式化字符串（像素）
+void drv_oled_textf(uint8_t x, uint8_t y, const char *fmt, ...)
+{
+    if (fmt == NULL)
+    {
+        return;
+    }
+
+    char str[64];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(str, sizeof(str), fmt, args);
+    va_end(args);
+
+    drv_oled_text(x, y, str);
 }
 
 // 打印数字
@@ -301,6 +331,24 @@ void drv_oled_print_num(uint8_t Line, uint8_t Column, float Num,
     }
 
     drv_oled_print(Line, Column, str);
+}
+
+// 打印数字（像素）
+void drv_oled_text_num(uint8_t x, uint8_t y, float Num,
+                       uint8_t DecimalPlaces, uint8_t ShowSign)
+{
+    char str[20];
+
+    if (ShowSign)
+    {
+        snprintf(str, sizeof(str), "%+.*f", DecimalPlaces, Num);
+    }
+    else
+    {
+        snprintf(str, sizeof(str), "%.*f", DecimalPlaces, Num);
+    }
+
+    drv_oled_text(x, y, str);
 }
 
 // 绘制像素点

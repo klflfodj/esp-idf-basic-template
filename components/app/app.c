@@ -7,22 +7,25 @@
 #include "bsp.h"
 #include "oled_drv.h"
 #include "servo_drv.h"
+#include "u8g2.h"
 #include "esp_log.h"
 
 
 static const char *TAG = "app";
 
 
-uint32_t o = 0;
 static void oled_ui(void)
 {
-    uint32_t t = o;
     uint8_t s = 0;
     drv_servo_get_angle(&g_servo, &s);
     drv_oled_clear();
-    drv_oled_print(1, 1 , "hello OLED");
-    drv_oled_printf(3, 1 , "angle = %d °", s);
-    drv_oled_printf(4, 1, "o = %d", t);
+
+    drv_oled_set_font(u8g2_font_wqy12_t_gb2312);
+    drv_oled_text(2, 10, "舵机和OLED测试");
+
+    drv_oled_set_font(u8g2_font_logisoso28_tf);
+    drv_oled_textf(36, 54, "%03d", s);
+
     drv_oled_update();
 }
 
@@ -64,11 +67,7 @@ void TaskOLED(void *pvParameters)
     while(1)
     {
         oled_ui();
-        o++;
-        if (o > 10000)
-        {
-            o = 0;
-        }
+
         vTaskDelay(pdMS_TO_TICKS(30));
     }
 }

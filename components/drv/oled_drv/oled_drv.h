@@ -31,22 +31,69 @@
  *    drv_oled_printf(2, 1, "%d mV", mv);
  *    drv_oled_update();                       // ★ 这一句才真正刷屏
  *
+ *  ==================== 两种排版方式 ====================
+ *
+ *    ① 字符网格（按行/列，从 1 开始）
+ *         drv_oled_print(2, 1, "TEMP:");
+ *       内部: x = (列-1) * 字宽
+ *             y = (行-1) * 字高 + Ascent
+ *       适合"第几行开头写点什么"，不用算坐标。
+ *
+ *    ② 像素坐标（像素级控制）
+ *         drv_oled_text(37, 52, "TEMP:");       // y = 基线
+ *         drv_oled_text_top(37, 40, "TEMP:");   // y = 文字顶部
+ *       适合精确排版、居中、图文混排。
+ *
+ *    ★ y 默认是【基线】，不是顶部：
+ *        基线 = 大多数字母坐的那条线，
+ *        g / y / p 的尾巴会伸到基线【下面】。
+ *        不想算基线就用 drv_oled_text_top()。
+ *
+ *  ==================== 换字体 ====================
+ *
+ *    换字体要用 u8g2 的字体符号，所以【使用处】必须：
+ *        #include "u8g2.h"
+ *
+ *    然后两种填法：
+ *        bsp 配置里:  .font = u8g2_font_8x13_tf,
+ *        运行时:      drv_oled_set_font(u8g2_font_logisoso28_tf);
+ *
+ *    【哪些字体能用】不用背，直接去这个文件里搜：
+ *        managed_components/nixy4__u8g2/src/core/u8g2_fonts.c
+ *        搜 "u8g2_font_" 就能看到全部字体名。
+ *
+ *    常见的几类：
+ *        u8g2_font_6x10_tf              纯 ASCII，6x10
+ *        u8g2_font_8x13_tf              纯 ASCII，8x13（默认）
+ *        u8g2_font_logisoso28_tf        大号字体，适合显示数值
+ *        带 _t_iso_8859_1 后缀的        含 ° µ ± 等 Latin-1 符号
+ *        带 wqy 前缀、_gb2312 后缀的     中文（体积大，慎用）
+ *
+ *    ★ 显示不出 ° 或中文，不是驱动的问题，是【那个字体里没有这个字形】。
+ *      8x13_tf 是纯 ASCII，没有 °；要换成带 iso_8859_1 或 unicode 的变体。
+ *
+ *    ★ 如果链接报 undefined reference to 'u8g2_font_xxx'，
+ *      说明那个字体没被编进工程，换一个试试。
+ *
  *  ==================== 画和刷是分开的 ====================
  *
- *    所有 drv_oled_print / oled_draw_* 都只改【内存里的显存】，
- *    必须调 drv_oled_update() 才推到屏幕（约 25ms）。
+ *    所有 drv_oled_print / drv_oled_text / drv_oled_draw_* 都只改
+ *    【内存里的显存】，必须调 drv_oled_update() 才推到屏幕（约 25ms）。
  *    好处：一次画一堆，最后刷一次，省 I2C 时间。
  *
  *  ==================== 必须知道的几条 ====================
  *
- *    1. 行列从 1 开始。能放几行几列由当前字体决定：
+ *    1. 字符网格的行列从 1 开始。能放几行几列由【当前字体】决定：
  *         drv_oled_max_line() / drv_oled_max_col() 可以查
  *       超范围会被忽略（不报错）。
  *
- *    2. 所有数据都通过 hal_iic_write() 发出，不会绕过 iic_hal。
+ *    2. 像素坐标不检查边界，超出屏幕的部分由 u8g2 自动裁剪。
+ *       长字符串跑出屏幕是正常现象，不会报错。
  *
- *    3. 本驱动只支持【一个 OLED】。要同时驱动两块，需要给 u8g2 传上下文指针
- *       （u8x8_SetUserPtr），当前没做。
+ *    3. 所有数据都通过 hal_iic_write() 发出，不会绕过 iic_hal。
+ *
+ *    4. 本驱动只支持【一个 OLED】。要同时驱动两块，需要给 u8g2 传
+ *       上下文指针（u8x8_SetUserPtr），当前没做。
  */
 
 // OLED 型号枚举
@@ -84,6 +131,11 @@ uint8_t drv_oled_max_col(void);
 void drv_oled_print(uint8_t Line, uint8_t Column, const char *String);
 void drv_oled_printf(uint8_t Line, uint8_t Column, const char *fmt, ...);
 void drv_oled_print_num(uint8_t Line, uint8_t Column, float Num,
+                    uint8_t DecimalPlaces, uint8_t ShowSign);
+
+void drv_oled_text(uint8_t x, uint8_t y, const char *String);
+void drv_oled_textf(uint8_t x, uint8_t y, const char *fmt, ...);
+void drv_oled_text_num(uint8_t x, uint8_t y, float Num,
                     uint8_t DecimalPlaces, uint8_t ShowSign);
 
 void drv_oled_draw_pixel(uint8_t x, uint8_t y);
