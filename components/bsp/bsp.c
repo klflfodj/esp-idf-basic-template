@@ -28,7 +28,7 @@ drv_key_t g_key;
 // 没写的字段自动是 0，不会是垃圾值
 
 // ---------- OLED ---------- //
-/*static const drv_oled_cfg_t s_oled_cfg =
+static const drv_oled_cfg_t s_oled_cfg =
 {
     .type      = BSP_OLED_TYPE,
     .bus       = HAL_IIC_BUS_0,
@@ -38,7 +38,7 @@ drv_key_t g_key;
     .addr_7bit = BSP_OLED_ADDR,
     .font      = NULL,              // NULL = 驱动用默认字体
 };
-
+/*
 // ---------- 电位器 ---------- //
 static const drv_pot_cfg_t s_pot_cfg =
 {
@@ -80,13 +80,13 @@ bool bsp_init(void)
 {
     bool ok = true;
 
-    /*if (!drv_oled_init(&s_oled_cfg))
+    if (!drv_oled_init(&s_oled_cfg))
     {
         ESP_LOGE(TAG, "oled init failed");
         ok = false;
     }
 
-    if (!drv_pot_init(&s_pot_cfg))
+    /*if (!drv_pot_init(&s_pot_cfg))
     {
         ESP_LOGE(TAG, "pot init failed");
         ok = false;

@@ -145,6 +145,7 @@ uint8_t drv_oled_max_col(void)
     return (FontWidth > 0) ? (uint8_t)(s_width / FontWidth) : 0;
 }
 
+// OLED 初始化
 bool drv_oled_init(const drv_oled_cfg_t *cfg)
 {
     // 检查配置是否有效
