@@ -33,6 +33,15 @@ static const drv_oled_model_t s_model[DRV_OLED_TYPE_MAX] =
     [DRV_OLED_TYPE_SSD1306_128X32] = { u8g2_Setup_ssd1306_i2c_128x32_univision_f, 128, 32 },
 };
 
+// OLED 字体数组
+static const uint8_t *const  s_fonts[DRV_OLED_FONT_MAX] =
+{
+    [DRV_OLED_FONT_SMALL]  = u8g2_font_6x10_tf,
+    [DRV_OLED_FONT_NORMAL] = u8g2_font_8x13_tf,
+    [DRV_OLED_FONT_BIG]    = u8g2_font_logisoso28_tf,
+    [DRV_OLED_FONT_CN]     = u8g2_font_wqy12_t_gb2312,
+};
+
 
 static u8g2_t        s_u8g2;      // OLED 实例
 static hal_iic_bus_t s_bus;       // I2C 总线
@@ -206,7 +215,7 @@ bool drv_oled_init(const drv_oled_cfg_t *cfg)
     // 关闭显示
     u8g2_SetPowerSave(&s_u8g2, 0);
 
-    drv_oled_set_font((cfg->font != NULL) ? cfg->font : u8g2_font_8x13_tr);
+    drv_oled_set_font((cfg->font != NULL) ? (drv_oled_font_t)cfg->font : DRV_OLED_FONT_NORMAL);
 
     s_ready = true;  // 标记为已初始化
 
@@ -231,14 +240,9 @@ void drv_oled_update(void)
 }
 
 // 设置字体
-void drv_oled_set_font(const uint8_t *font)
+void drv_oled_set_font(drv_oled_font_t font)
 {
-    if (font == NULL)
-    {
-        return;
-    }
-
-    u8g2_SetFont(&s_u8g2, font);  // 设置字体
+    u8g2_SetFont(&s_u8g2, s_fonts[font]);  // 设置字体
 
     FontWidth  = (uint8_t)u8g2_GetMaxCharWidth(&s_u8g2);  // 获取最大字符宽度
     FontHeight = (uint8_t)u8g2_GetMaxCharHeight(&s_u8g2); // 获取最大字符高度

@@ -105,6 +105,17 @@ typedef enum
     DRV_OLED_TYPE_MAX,
 } drv_oled_type_t;
 
+// OLED 字体枚举
+typedef enum
+{
+    DRV_OLED_FONT_SMALL = 0,   // 小号 ASCII 6x10
+    DRV_OLED_FONT_NORMAL,      // 中号 ASCII 8x13
+    DRV_OLED_FONT_BIG,         // 大号字体，适合显示数值
+    DRV_OLED_FONT_CN,          // 中文字体
+    DRV_OLED_FONT_MAX,
+} drv_oled_font_t;
+
+// OLED 配置结构体
 typedef struct
 {
     drv_oled_type_t    type;      // OLED 型号
@@ -120,7 +131,7 @@ bool drv_oled_init(const drv_oled_cfg_t *cfg);
 
 void drv_oled_clear(void);
 void drv_oled_update(void);
-void drv_oled_set_font(const uint8_t *font);
+void drv_oled_set_font(drv_oled_font_t font);
 
 /* 当前屏的尺寸 / 能放几行几列（用于自己算布局） */
 uint8_t drv_oled_width(void);

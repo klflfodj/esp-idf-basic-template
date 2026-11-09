@@ -5,9 +5,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "bsp.h"
+
 #include "oled_drv.h"
 #include "servo_drv.h"
-#include "u8g2.h"
+
 #include "esp_log.h"
 
 
@@ -20,11 +21,11 @@ static void oled_ui(void)
     drv_servo_get_angle(&g_servo, &s);
     drv_oled_clear();
 
-    drv_oled_set_font(u8g2_font_wqy12_t_gb2312);
-    drv_oled_text(2, 10, "舵机和OLED测试");
+    drv_oled_set_font(DRV_OLED_FONT_CN);
+    drv_oled_text(15, 15, "舵机和OLED测试");
 
-    drv_oled_set_font(u8g2_font_logisoso28_tf);
-    drv_oled_textf(36, 54, "%03d", s);
+    drv_oled_set_font(DRV_OLED_FONT_BIG);
+    drv_oled_textf(36, 50, "%03d", s);
 
     drv_oled_update();
 }
