@@ -39,12 +39,12 @@ static const drv_oled_cfg_t s_oled_cfg =
     .addr_7bit = BSP_OLED_ADDR,
     .font      = NULL,              // NULL = 驱动用默认字体
 };
-/*
+
 // ---------- 电位器 ---------- //
 static const drv_pot_cfg_t s_pot_cfg =
 {
     .gpio_num = BSP_POT_ADC_PIN,
-};*/
+};
 
 // ---------- 舵机 ---------- //
 static const drv_servo_cfg_t s_servo_cfg =
@@ -87,11 +87,11 @@ bool bsp_init(void)
         ok = false;
     }
 
-    /*if (!drv_pot_init(&s_pot_cfg))
+    if (!drv_pot_init(&s_pot_cfg))
     {
         ESP_LOGE(TAG, "pot init failed");
         ok = false;
-    }*/
+    }
 
     if (!drv_servo_init(&g_servo, &s_servo_cfg))
     {
