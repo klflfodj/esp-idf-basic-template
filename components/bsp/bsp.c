@@ -122,7 +122,7 @@ bool bsp_init(void)
 }
 
 // ========== 按键初始化 ========== //
-bool bsp_key_init(drv_key_cb_t cb, void *arg)
+bool bsp_key_init(void *cb, void *arg)
 {
     if (cb == NULL)
     {

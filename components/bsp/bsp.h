@@ -36,15 +36,15 @@ bool bsp_init(void);
 // 初始化按键（单独一个函数，因为需要业务回调）
 // cb  : 按键事件回调
 // arg : 回调时原样传回
-bool bsp_key_init(drv_key_cb_t cb, void *arg);
+bool bsp_key_init(void *cb, void *arg);
 
 // ---------- 暴露给 app 的实例 ---------- //
 // 多实例驱动必须暴露，否则 app 拿不到句柄
 extern drv_servo_t   g_servo;
 /*extern drv_led_t g_led1;
 extern drv_led_t g_led2;
-extern drv_led_t g_led3;
-extern drv_key_t g_key;*/
+extern drv_led_t g_led3;*/
+extern drv_key_t g_key;
 
 
 
