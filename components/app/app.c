@@ -13,10 +13,17 @@
 #include "key_drv.h"
 #include "pot_drv.h"
 
+#include "filter_lowpass_svc.h"
+
 #include "esp_log.h"
+
+#define APP_POT_FILTER_SHIFT  2 // 低通滤波器位移,约 80ms
 
 
 static const char *TAG = "app";
+
+
+static svc_filter_lowpass_t s_pot_filter;// 电位器低通滤波器
 
 static volatile uint16_t key_count = 0;//按键计数器
 
@@ -83,6 +90,7 @@ static void s_key_cb(void *arg, drv_key_event_t evt)
                 {
                     hal_nvs_set_u16("pot_min", s_cal_min);
                     hal_nvs_set_u16("pot_max", s_cal_max);
+                    svc_filter_lowpass_reset(&s_pot_filter);    //量程变了，滤波重新起步
                     ESP_LOGI(TAG, "calib ok: %u ~ %u",(unsigned)s_cal_min, (unsigned)s_cal_max);
                 }
                 else
@@ -183,6 +191,12 @@ bool app_init(void)
     s_pot_range_load();   //尝试从NVS恢复校准范围
     s_brightness_load();   //尝试从NVS恢复亮度
 
+    if (!svc_filter_lowpass_init(&s_pot_filter, APP_POT_FILTER_SHIFT))
+    {
+        ESP_LOGE(TAG, "pot filter init failed");
+        return false;
+    }
+
     xTaskCreate(TaskServo, "Servo", 2048, NULL, 5, NULL);
     xTaskCreate(TaskOLED, "OLED", 4096, NULL, 1, NULL);
     xTaskCreate(TaskPot, "Pot", 2048, NULL, 10, NULL);
@@ -217,8 +231,13 @@ void TaskPot(void *pvParameters)
         }
         else 
         {
+            // 非校准中：读 raw，滤波，换算成千分比
+            uint16_t raw = drv_pot_read_raw();
+            // 滤波 raw
+            uint16_t filtered =  svc_filter_lowpass_update(&s_pot_filter, raw);
             uint16_t permille = 0;
-            if (drv_pot_read_permille(&permille))
+
+            if (drv_pot_raw_to_permille(filtered, &permille))
             {
                 pot_value = permille;
             }

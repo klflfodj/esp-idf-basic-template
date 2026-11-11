@@ -3,8 +3,6 @@
 #include "adc_hal.h"
 #include "esp_log.h"
 
-// 电位器采样次数
-#define POT_SAMPLE      16
 // 电位器范围最小值
 #define POT_SPAN_MIN    500
 // 电位器范围最大值
@@ -77,34 +75,18 @@ uint16_t drv_pot_read_raw(void)
         return 0;
     }
 
-    uint32_t sum = 0;   // 采样原始值总和
-    uint8_t  cnt = 0;   // 有效样次数
+    int raw = 0;
 
-    // 采样电位器
-    for (uint8_t i = 0; i < POT_SAMPLE; i++)
-    {
-        int raw = 0;
-
-        // 读取电位器原始值
-        if (hal_adc_read_raw(s_gpio, &raw))
-        {
-            // 累加原始值
-            sum += (uint32_t)raw;
-            cnt++;
-        }
-    }
-
-    if (cnt == 0)
+    if (!hal_adc_read_raw(s_gpio, &raw))
     {
         return 0;
     }
 
-    // 计算平均值
-    return (uint16_t)(sum / cnt);
+    return (uint16_t)raw;
 }
 
-// 读取电位器权限值
-bool drv_pot_read_permille(uint16_t *out_permille)
+// 转换原始值为权限值
+bool drv_pot_raw_to_permille(uint16_t raw, uint16_t *out_permille)
 {
     if (out_permille == NULL)
     {
@@ -115,8 +97,6 @@ bool drv_pot_read_permille(uint16_t *out_permille)
     {
         return false;
     }
-
-    uint16_t raw = drv_pot_read_raw();
 
     // 检查是否超出范围, 如果超出范围, 则返回0或1000
     if (raw <= s_min_raw)
@@ -138,6 +118,12 @@ bool drv_pot_read_permille(uint16_t *out_permille)
     *out_permille = (uint16_t)(((uint32_t)(raw - s_min_raw) * 1000u) / span);
 
     return true;
+}
+
+// 读一次并换算（不想自己滤波的直接用这个）
+bool drv_pot_read_permille(uint16_t *out_permille)
+{
+    return drv_pot_raw_to_permille(drv_pot_read_raw(), out_permille);
 }
 
 // 设置电位器范围
