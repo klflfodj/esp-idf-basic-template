@@ -25,6 +25,7 @@ typedef struct
 static const char *TAG = "oled_drv";
 
 
+static uint8_t s_contrast = 0x7F;   //当前对比度，0x7F是SSD1306出厂默认值
 // OLED 型号数组
 static const drv_oled_model_t s_model[DRV_OLED_TYPE_MAX] = 
 {
@@ -247,6 +248,21 @@ void drv_oled_set_font(drv_oled_font_t font)
     FontWidth  = (uint8_t)u8g2_GetMaxCharWidth(&s_u8g2);  // 获取最大字符宽度
     FontHeight = (uint8_t)u8g2_GetMaxCharHeight(&s_u8g2); // 获取最大字符高度
     FontAscent = (uint8_t)u8g2_GetAscent(&s_u8g2);        // 获取字体上移量
+}
+
+// 设置对比度
+void drv_oled_set_contrast(uint8_t value)
+{
+    OLED_GUARD();
+
+    u8g2_SetContrast(&s_u8g2, value);  // 设置对比度
+    s_contrast = value;
+}
+
+// 获取对比度
+uint8_t drv_oled_get_contrast(void)
+{
+    return s_contrast;
 }
 
 // 打印字符串

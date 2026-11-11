@@ -25,6 +25,9 @@ static uint16_t pot_value = 0;//电位器值计数器
 static uint16_t s_cal_min = 4095;     /* 见过的最小 raw */
 static uint16_t s_cal_max = 0;        /* 见过的最大 raw */
 
+static volatile uint8_t  s_brightness = 0x7F;  //当前亮度
+static volatile bool     s_br_mode    = false; //false=旋钮控舵机 true=旋钮控亮度
+
 static void s_key_cb(void *arg, drv_key_event_t evt)
 {
     (void)arg;
@@ -45,7 +48,15 @@ static void s_key_cb(void *arg, drv_key_event_t evt)
 
         case DRV_KEY_EVT_DOUBLE:
         {
-            key_count--;
+             if (s_br_mode)      //亮度模式下切走，先把亮度存了
+            {
+                hal_nvs_set_u8("oled_br", s_brightness);
+                ESP_LOGI(TAG, "brightness saved: %u",(unsigned)s_brightness);
+            }
+
+            //切换模式
+            s_br_mode = !s_br_mode;
+            ESP_LOGI(TAG, "mode: %s", s_br_mode ? "brightness" : "servo");
             break;
         }
 
@@ -91,6 +102,14 @@ static void oled_ui(void)
 {
     uint8_t  s = 0;
     uint16_t k = key_count;
+
+    //亮度模式：同一个旋钮值换算成亮度
+    if (s_br_mode)
+    {
+        s_brightness = (uint8_t)(pot_value * 255 / 1000);
+        drv_oled_set_contrast(s_brightness);
+    }
+
     drv_servo_get_angle(&g_servo, &s);
     drv_oled_clear();
 
@@ -103,6 +122,7 @@ static void oled_ui(void)
     drv_oled_set_font(DRV_OLED_FONT_SMALL);
     drv_oled_textf(15, 60, "%03d", k);
     drv_oled_textf(100, 60, "%04d", pot_value);
+    drv_oled_text(110, 15, s_br_mode ? "BR" : "SV");   //当前模式
 
     drv_oled_update();
 }
@@ -132,6 +152,21 @@ static bool s_pot_range_load(void)
     return true;
 }
 
+static void s_brightness_load(void)
+{
+    uint8_t br = 0;
+
+    if (!hal_nvs_get_u8("oled_br", &br))
+    {
+        ESP_LOGI(TAG, "no saved brightness");
+        return;
+    }
+
+    s_brightness = br;
+    drv_oled_set_contrast(br);   //开机就应用，不然要等切到亮度模式才生效
+    ESP_LOGI(TAG, "brightness restored: %u",(unsigned)br);
+}
+
 bool app_init(void)
 {
     if (!bsp_init())
@@ -146,6 +181,7 @@ bool app_init(void)
     }
 
     s_pot_range_load();   //尝试从NVS恢复校准范围
+    s_brightness_load();   //尝试从NVS恢复亮度
 
     xTaskCreate(TaskServo, "Servo", 2048, NULL, 5, NULL);
     xTaskCreate(TaskOLED, "OLED", 4096, NULL, 1, NULL);
@@ -158,8 +194,10 @@ void TaskServo(void *pvParameters)
 {
     while (1)
     {
-        uint8_t servo_angle = pot_value * 180 / 1000;
-        drv_servo_set_angle(&g_servo, servo_angle);
+        if (!s_br_mode)     //亮度模式下不动舵机
+        {
+            drv_servo_set_angle(&g_servo, pot_value * 180 / 1000);
+        }
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }

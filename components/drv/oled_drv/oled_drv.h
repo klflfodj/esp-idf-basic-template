@@ -94,6 +94,18 @@
  *
  *    4. 本驱动只支持【一个 OLED】。要同时驱动两块，需要给 u8g2 传
  *       上下文指针（u8x8_SetUserPtr），当前没做。
+ *    5. 亮度用 drv_oled_set_contrast(0~255)，不是 0~100。
+ *       OLED 没有背光，不能 PWM 调光，只能改面板的驱动电流。
+ *
+ *       要点：
+ *         a. 立即生效，【不需要】调 drv_oled_update()
+ *         b. 不是线性：50 可能还很亮，10 已经看不清
+ *         c. 太低会拖影/不均匀，一般 60 以上比较稳
+ *         d. 不省电：OLED 功耗主要看点亮了多少像素
+ *         e. 掉电不保存，要保存自己写 NVS
+ *
+ *       把旋钮的 0~1000 换成 0~255：
+ *         drv_oled_set_contrast((uint8_t)(p * 255 / 1000));
  */
 
 // OLED 型号枚举
@@ -132,6 +144,8 @@ bool drv_oled_init(const drv_oled_cfg_t *cfg);
 void drv_oled_clear(void);
 void drv_oled_update(void);
 void drv_oled_set_font(drv_oled_font_t font);
+void drv_oled_set_contrast(uint8_t value);
+uint8_t drv_oled_get_contrast(void);
 
 /* 当前屏的尺寸 / 能放几行几列（用于自己算布局） */
 uint8_t drv_oled_width(void);
