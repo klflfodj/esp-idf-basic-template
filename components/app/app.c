@@ -217,7 +217,11 @@ void TaskPot(void *pvParameters)
         }
         else 
         {
-            drv_pot_read_permille(&pot_value);
+            uint16_t permille = 0;
+            if (drv_pot_read_permille(&permille))
+            {
+                pot_value = permille;
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(20));
     }

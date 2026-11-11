@@ -39,7 +39,7 @@ static const drv_oled_cfg_t s_oled_cfg =
     .sda_pin   = BSP_OLED_SDA_PIN,
     .freq_hz   = BSP_OLED_IIC_FREQ,
     .addr_7bit = BSP_OLED_ADDR,
-    .font      = NULL,              // NULL = 驱动用默认字体
+    .font      = DRV_OLED_FONT_NORMAL,              // NULL = 驱动用默认字体
 };
 
 // ---------- 电位器 ---------- //

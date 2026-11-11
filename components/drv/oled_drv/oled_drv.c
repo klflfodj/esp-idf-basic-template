@@ -216,7 +216,7 @@ bool drv_oled_init(const drv_oled_cfg_t *cfg)
     // 关闭显示
     u8g2_SetPowerSave(&s_u8g2, 0);
 
-    drv_oled_set_font((cfg->font != NULL) ? (drv_oled_font_t)cfg->font : DRV_OLED_FONT_NORMAL);
+    drv_oled_set_font(cfg->font);
 
     s_ready = true;  // 标记为已初始化
 
@@ -243,6 +243,12 @@ void drv_oled_update(void)
 // 设置字体
 void drv_oled_set_font(drv_oled_font_t font)
 {
+    if ((int)font < 0 || font >= DRV_OLED_FONT_MAX)
+    {
+        ESP_LOGE(TAG, "invalid font %d", (int)font);
+        return;
+    }
+    
     u8g2_SetFont(&s_u8g2, s_fonts[font]);  // 设置字体
 
     FontWidth  = (uint8_t)u8g2_GetMaxCharWidth(&s_u8g2);  // 获取最大字符宽度

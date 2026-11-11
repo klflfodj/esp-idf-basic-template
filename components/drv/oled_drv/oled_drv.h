@@ -21,7 +21,7 @@
  *        .sda_pin   = 21,
  *        .freq_hz   = 400000,
  *        .addr_7bit = 0x3C,
- *        .font      = NULL,               // NULL = 默认 8x13
+ *        .font      = DRV_OLED_FONT_NORMAL,  // 开机字体
  *    };
  *
  *    if (!drv_oled_init(&cfg)) { ... }        // 失败会打印原因
@@ -51,29 +51,28 @@
  *
  *  ==================== 换字体 ====================
  *
- *    换字体要用 u8g2 的字体符号，所以【使用处】必须：
- *        #include "u8g2.h"
+ *    字体是枚举，不是 u8g2 的字体指针，所以使用处【不用】include "u8g2.h"。
  *
- *    然后两种填法：
- *        bsp 配置里:  .font = u8g2_font_8x13_tf,
- *        运行时:      drv_oled_set_font(u8g2_font_logisoso28_tf);
+ *    能用的四种（括号里是对应的 u8g2 字体）：
+ *        DRV_OLED_FONT_SMALL     6x10，纯 ASCII
+ *        DRV_OLED_FONT_NORMAL    8x13，纯 ASCII（默认）
+ *        DRV_OLED_FONT_BIG       logisoso28，大号，适合显示数值
+ *        DRV_OLED_FONT_CN        wqy12，GB2312 中文
  *
- *    【哪些字体能用】不用背，直接去这个文件里搜：
- *        managed_components/nixy4__u8g2/src/core/u8g2_fonts.c
- *        搜 "u8g2_font_" 就能看到全部字体名。
+ *    两种设置方式：
+ *        bsp 配置里:  .font = DRV_OLED_FONT_BIG,
+ *        运行时:      drv_oled_set_font(DRV_OLED_FONT_CN);
  *
- *    常见的几类：
- *        u8g2_font_6x10_tf              纯 ASCII，6x10
- *        u8g2_font_8x13_tf              纯 ASCII，8x13（默认）
- *        u8g2_font_logisoso28_tf        大号字体，适合显示数值
- *        带 _t_iso_8859_1 后缀的        含 ° µ ± 等 Latin-1 符号
- *        带 wqy 前缀、_gb2312 后缀的     中文（体积大，慎用）
+ *    ★ 枚举和实际字体在 oled_drv.c 的 s_fonts[] 表里一一对应，
+ *      头文件里看不到 u8g2 的符号。
  *
- *    ★ 显示不出 ° 或中文，不是驱动的问题，是【那个字体里没有这个字形】。
- *      8x13_tf 是纯 ASCII，没有 °；要换成带 iso_8859_1 或 unicode 的变体。
+ *    ★ 要加一种字体：在 drv_oled_font_t 的 MAX 前加一项，
+ *      再到 s_fonts[] 对应位置补一行字体符号。两处必须同步。
  *
- *    ★ 如果链接报 undefined reference to 'u8g2_font_xxx'，
- *      说明那个字体没被编进工程，换一个试试。
+ *    ★ 不填 .font 就是 0，也就是 DRV_OLED_FONT_SMALL，不是 NORMAL，
+ *      所以 bsp 里要显式写 DRV_OLED_FONT_NORMAL。
+ *
+ *    ★ 中文字体很占 flash：wqy12 一个就约 198KB（整份固件约 430KB）。
  *
  *  ==================== 画和刷是分开的 ====================
  *
@@ -136,7 +135,7 @@ typedef struct
     int            sda_pin;   // SDA 引脚
     uint32_t       freq_hz;   // I2C 频率（Hz）
     uint8_t        addr_7bit; // I2C 地址（7位）
-    const uint8_t  *font;     // 字体数据指针
+    drv_oled_font_t font;     // 开机字体（枚举，不是 u8g2 字体指针）
 } drv_oled_cfg_t;
 
 bool drv_oled_init(const drv_oled_cfg_t *cfg);
