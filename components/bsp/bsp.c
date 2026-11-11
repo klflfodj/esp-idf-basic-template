@@ -8,6 +8,8 @@
 #include "led_drv.h"
 #include "key_drv.h"
 
+#include "nvs_hal.h"
+
 #include "esp_log.h"
 
 
@@ -80,6 +82,12 @@ static drv_led_cfg_t s_led3_cfg =
 bool bsp_init(void)
 {
     bool ok = true;
+
+    if (!hal_nvs_init())
+    {
+        ESP_LOGE(TAG, "nvs init failed");
+        ok = false;
+    }
 
     if (!drv_oled_init(&s_oled_cfg))
     {

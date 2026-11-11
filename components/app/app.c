@@ -6,6 +6,8 @@
 #include "freertos/task.h"
 #include "bsp.h"
 
+#include "nvs_hal.h"
+
 #include "oled_drv.h"
 #include "servo_drv.h"
 #include "key_drv.h"
@@ -68,6 +70,8 @@ static void s_key_cb(void *arg, drv_key_event_t evt)
                 s_calib = false;
                 if (drv_pot_set_range(s_cal_min, s_cal_max))
                 {
+                    hal_nvs_set_u16("pot_min", s_cal_min);
+                    hal_nvs_set_u16("pot_max", s_cal_max);
                     ESP_LOGI(TAG, "calib ok: %u ~ %u",(unsigned)s_cal_min, (unsigned)s_cal_max);
                 }
                 else
@@ -103,6 +107,30 @@ static void oled_ui(void)
     drv_oled_update();
 }
 
+static bool s_pot_range_load(void)
+{
+    uint16_t mn = 0, mx = 0;
+
+    // 从 NVS 加载电位器范围
+    if (!hal_nvs_get_u16("pot_min", &mn) || !hal_nvs_get_u16("pot_max", &mx))
+    {
+        ESP_LOGI(TAG, "no saved pot range");
+        return false;
+    }
+
+    // 设置电位器范围
+    if (!drv_pot_set_range(mn, mx))
+    {
+        // NVS 里存了脏数据（比如旧版本写的），drv 自带的校验挡住了
+        ESP_LOGW(TAG, "saved range invalid (%u ~ %u), need recalibration",
+                 (unsigned)mn, (unsigned)mx);
+        return false;
+    }
+
+    ESP_LOGI(TAG, "pot range restored: %u ~ %u", (unsigned)mn, (unsigned)mx);
+
+    return true;
+}
 
 bool app_init(void)
 {
@@ -116,6 +144,8 @@ bool app_init(void)
         ESP_LOGE(TAG, "bsp_key_init failed");
         return false;
     }
+
+    s_pot_range_load();   //尝试从NVS恢复校准范围
 
     xTaskCreate(TaskServo, "Servo", 2048, NULL, 5, NULL);
     xTaskCreate(TaskOLED, "OLED", 4096, NULL, 1, NULL);
