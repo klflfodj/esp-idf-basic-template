@@ -189,7 +189,7 @@ bool hal_nvs_get_u8(const char *key, uint8_t *out)
         return false;
     }
 
-    nvs_handle h;
+    nvs_handle_t h;
     if (!nvs_hal_open(&h))
     {
         return false;
@@ -219,7 +219,7 @@ bool hal_nvs_get_u16(const char *key, uint16_t *out)
         return false;
     }
 
-    nvs_handle h;
+    nvs_handle_t h;
     if (!nvs_hal_open(&h))
     {
         return false;
@@ -249,7 +249,7 @@ bool hal_nvs_get_u32(const char *key, uint32_t *out)
         return false;
     }
 
-    nvs_handle h;
+    nvs_handle_t h;
     if (!nvs_hal_open(&h))
     {
         return false;
@@ -279,7 +279,7 @@ bool hal_nvs_set_str(const char *key, const char *str)
         return false;
     }
 
-    nvs_handle h;
+    nvs_handle_t h;
     if (!nvs_hal_open(&h))
     {
         return false;
@@ -308,7 +308,7 @@ bool hal_nvs_get_str(const char *key, char *buf, size_t buf_len)
         return false;
     }
 
-    nvs_handle h;
+    nvs_handle_t h;
     if (!nvs_hal_open(&h))
     {
         return false;
@@ -345,7 +345,7 @@ bool hal_nvs_erase_key(const char *key)
         return false;
     }
 
-    nvs_handle h;
+    nvs_handle_t h;
     if (!nvs_hal_open(&h))
     {
         return false;

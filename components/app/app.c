@@ -18,12 +18,12 @@
 
 static const char *TAG = "app";
 
-static uint16_t key_count = 0;//按键计数器
+static volatile uint16_t key_count = 0;//按键计数器
 
-static bool     s_calib   = false;    /* 是否在校准模式 */
-static uint16_t pot_value = 0;//电位器值计数器
-static uint16_t s_cal_min = 4095;     /* 见过的最小 raw */
-static uint16_t s_cal_max = 0;        /* 见过的最大 raw */
+static volatile bool     s_calib   = false;    /* 是否在校准模式 */
+static volatile uint16_t pot_value = 0;//电位器值计数器
+static volatile uint16_t s_cal_min = 4095;     /* 见过的最小 raw */
+static volatile uint16_t s_cal_max = 0;        /* 见过的最大 raw */
 
 static volatile uint8_t  s_brightness = 0x7F;  //当前亮度
 static volatile bool     s_br_mode    = false; //false=旋钮控舵机 true=旋钮控亮度

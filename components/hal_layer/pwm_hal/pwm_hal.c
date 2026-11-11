@@ -5,8 +5,8 @@
 #include "soc/soc_caps.h"
 #include "esp_log.h"
 
-// 每个 PWM 通道的最大数量
-#define HAL_PWM_MAX       SOC_LEDC_CHANNEL_NUM  
+// 每路 PWM 独占一个定时器，所以上限是定时器数量（ESP32 = 4）
+#define HAL_PWM_MAX       SOC_LEDC_TIMER_NUM
 
 // PWM 时钟频率，单位：兹
 #define HAL_PWM_CLK_HZ    80000000UL
