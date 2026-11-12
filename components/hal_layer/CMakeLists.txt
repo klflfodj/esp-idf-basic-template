@@ -6,7 +6,8 @@ set(src_dirs
             iic_hal
             spi_hal
             pwm_hal
-            nvs_hal)
+            nvs_hal
+            wifi_hal)
 
 set(include_dirs
             gpio_hal
@@ -16,7 +17,8 @@ set(include_dirs
             iic_hal
             spi_hal
             pwm_hal
-            nvs_hal)
+            nvs_hal
+            wifi_hal)
 
 set(requires
             esp_driver_gpio
@@ -25,7 +27,10 @@ set(requires
             esp_driver_i2c
             esp_driver_spi
             esp_driver_ledc
-            nvs_flash)
+            nvs_flash
+            esp_wifi
+            esp_netif
+            esp_event)
 
 idf_component_register(
     SRC_DIRS ${src_dirs} 
