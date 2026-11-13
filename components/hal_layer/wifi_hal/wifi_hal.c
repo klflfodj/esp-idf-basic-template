@@ -27,18 +27,22 @@ static esp_netif_t *s_netif = NULL;
 // 是否初始化通过
 static bool s_inited = false;
 
-
+// wifi 事件处理函数
 static void hal_wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void)arg;
     
     // 如果是断开事件
-    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED)
+    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED)// 主动断开或被踢
     {
         wifi_event_sta_disconnected_t *evt = (wifi_event_sta_disconnected_t *)data;// 断开事件结构体
 
         s_disconnect_reason = evt->reason;// 记录断开原因
         s_ip[0] = '\0';// 清空 IP 字符串
+
+        // 所有断开都打一条，方便看是主动断的还是被踢的
+        ESP_LOGW(TAG, "disconnected, reason %d, state %d, manual %d",
+                 (int)evt->reason, (int)s_state, (int)s_manual_disconnect);// 打印断开原因、状态、是否主动断开
 
         // 如果是主动断开
         if (s_manual_disconnect)
@@ -49,13 +53,12 @@ static void hal_wifi_event_handler(void *arg, esp_event_base_t base, int32_t id,
             // 如果当前状态不是连接中，才切换到空闲状态
             if (s_state != HAL_WIFI_CONNECTING)
             {
-                s_state = HAL_WIFI_IDLE;// 切换到空闲状态
+                s_state = HAL_WIFI_IDLE;  // 切换到空闲状态
             }
         }
         else
         {
             s_state = HAL_WIFI_FAILED;  // 切换到失败状态
-            ESP_LOGW(TAG, "disconnected, reason %d", (int)evt->reason);  // 记录断开原因
         }
         return;
     }
@@ -67,7 +70,7 @@ static void hal_wifi_event_handler(void *arg, esp_event_base_t base, int32_t id,
 
         (void)esp_ip4addr_ntoa(&evt->ip_info.ip, s_ip, sizeof(s_ip));// 转换 IP 字符串
         s_state = HAL_WIFI_CONNECTED;// 切换到已连接状态
-        ESP_LOGI(TAG, "connected, ip %s", s_ip);
+        ESP_LOGI(TAG, "connected, ip %s", s_ip);  // 打印 IP 字符串
     }
 }
 
@@ -83,7 +86,7 @@ bool hal_wifi_init(void)
     esp_err_t err = esp_netif_init();
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE)
     {
-        ESP_LOGE(TAG, "netif init failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "netif init failed: %s", esp_err_to_name(err));  // 打印错误码
         return false;
     }
 
@@ -91,7 +94,7 @@ bool hal_wifi_init(void)
     err = esp_event_loop_create_default();
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE)
     {
-        ESP_LOGE(TAG, "create event loop failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "create event loop failed: %s", esp_err_to_name(err));  // 打印错误码
         return false;
     }
 
@@ -102,16 +105,16 @@ bool hal_wifi_init(void)
         s_netif = esp_netif_create_default_wifi_sta();
         if (s_netif == NULL)
         {
-            ESP_LOGE(TAG, "create sta netif failed");
+            ESP_LOGE(TAG, "create sta netif failed");  // 打印错误码
             return false;
         }
     }
 
     // 初始化 wifi
-    wifi_init_config_t init_cfg = WIFI_INIT_CONFIG_DEFAULT();
+    wifi_init_config_t init_cfg = WIFI_INIT_CONFIG_DEFAULT();// 初始化 wifi 配置结构体
     if (esp_wifi_init(&init_cfg) != ESP_OK)
     {
-        ESP_LOGE(TAG, "wifi init failed");
+        ESP_LOGE(TAG, "wifi init failed");  // 打印错误码
         return false;
     }
 
@@ -119,7 +122,7 @@ bool hal_wifi_init(void)
     // 配置只放内存：SSID 由上层每次传，不替上层存
     if (esp_wifi_set_storage(WIFI_STORAGE_RAM) != ESP_OK)
     {
-        ESP_LOGE(TAG, "set storage failed");
+        ESP_LOGE(TAG, "set storage failed");  // 打印错误码
         return false;
     }
 
@@ -129,7 +132,7 @@ bool hal_wifi_init(void)
     // 注册失败时，会自动重试
     if (esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,hal_wifi_event_handler,NULL,NULL) != ESP_OK)
     {
-        ESP_LOGE(TAG, "register wifi event failed");
+        ESP_LOGE(TAG, "register wifi event failed");  // 打印错误码
         return false;
     }
 
@@ -139,28 +142,28 @@ bool hal_wifi_init(void)
     // 注册失败时，会自动重试
     if (esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, hal_wifi_event_handler, NULL, NULL) != ESP_OK)
     {
-        ESP_LOGE(TAG, "register ip event failed");
+        ESP_LOGE(TAG, "register ip event failed");  // 打印错误码
         return false;
     }
 
     // 设置 wifi 模式为 STA
     if (esp_wifi_set_mode(WIFI_MODE_STA) != ESP_OK)
     {
-        ESP_LOGE(TAG, "set mode failed");
+        ESP_LOGE(TAG, "set mode failed");  // 打印错误码
         return false;
     }
 
     // 启动 wifi
     if (esp_wifi_start() != ESP_OK)
     {
-        ESP_LOGE(TAG, "wifi start failed");
+        ESP_LOGE(TAG, "wifi start failed");  // 打印错误码
         return false;
     }
 
     s_state  = HAL_WIFI_IDLE;
     s_inited = true;
 
-    ESP_LOGI(TAG, "init done");
+    ESP_LOGI(TAG, "init done");  // 打印初始化完成
     return true;
 }
 
@@ -169,13 +172,13 @@ bool hal_wifi_connect(const char *ssid, const char *password)
 {
     if (!s_inited)
     {
-        ESP_LOGE(TAG, "call hal_wifi_init() first");
+        ESP_LOGE(TAG, "call hal_wifi_init() first");  // 打印错误码
         return false;
     }
 
     if (ssid == NULL || ssid[0] == '\0')
     {
-        ESP_LOGE(TAG, "ssid is empty");
+        ESP_LOGE(TAG, "ssid is empty");  // 打印错误码
         return false;
     }
 
@@ -184,13 +187,13 @@ bool hal_wifi_connect(const char *ssid, const char *password)
     // 检查 SSID 长度
     if (strlen(ssid) >= sizeof(cfg.sta.ssid))
     {
-        ESP_LOGE(TAG, "ssid too long (%u)", (unsigned)strlen(ssid));
+        ESP_LOGE(TAG, "ssid too long (%u)", (unsigned)strlen(ssid));  // 打印错误码
         return false;
     }
     // 检查密码长度
     if (password != NULL && strlen(password) >= sizeof(cfg.sta.password))
     {
-        ESP_LOGE(TAG, "password too long (%u)", (unsigned)strlen(password));
+        ESP_LOGE(TAG, "password too long (%u)", (unsigned)strlen(password));  // 打印错误码
         return false;
     }
 
@@ -199,7 +202,7 @@ bool hal_wifi_connect(const char *ssid, const char *password)
     // 如果密码密码为空，设置为 NULL
     if (password != NULL)
     {
-        memcpy(cfg.sta.password, password, strlen(password));
+        memcpy(cfg.sta.password, password, strlen(password));  // 复制密码 到配置结构体
     }
 
     // 设置认证模式为开放
@@ -210,13 +213,19 @@ bool hal_wifi_connect(const char *ssid, const char *password)
     if (s_state == HAL_WIFI_CONNECTED || s_state == HAL_WIFI_CONNECTING)
     {
         s_manual_disconnect = true;
-        (void)esp_wifi_disconnect();
+
+        // 实际没连时不会有断开事件，标记要撤掉，否则会吞掉以后真正的断开
+        if (esp_wifi_disconnect() == ESP_ERR_WIFI_NOT_CONNECT)
+        {
+            s_manual_disconnect = false;
+        }
     }
 
     // 设置配置
-    if (esp_wifi_set_config(WIFI_IF_STA, &cfg) != ESP_OK)
+    esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &cfg);
+    if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "set config failed");
+        ESP_LOGE(TAG, "set config failed: %s", esp_err_to_name(err));  // 打印错误码
         s_manual_disconnect = false;
         s_state = HAL_WIFI_FAILED;
         return false;
@@ -231,9 +240,10 @@ bool hal_wifi_connect(const char *ssid, const char *password)
     // 连接失败后，会上报 WIFI_EVENT_STA_DISCONNECTED 事件
     // 断开后，会上报 WIFI_EVENT_STA_DISCONNECTED 事件
     // 重连后，会上报 WIFI_EVENT_STA_CONNECTED 事件
-    if (esp_wifi_connect() != ESP_OK)
+    err = esp_wifi_connect();
+    if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "connect failed");
+        ESP_LOGE(TAG, "connect failed: %s", esp_err_to_name(err));  // 打印错误码
         s_manual_disconnect = false;
         s_state = HAL_WIFI_FAILED;
         return false;
@@ -247,7 +257,7 @@ bool hal_wifi_disconnect(void)
 {
     if (!s_inited)
     {
-        ESP_LOGE(TAG, "call hal_wifi_init() first");
+        ESP_LOGE(TAG, "call hal_wifi_init() first");  // 打印错误码
         return false;
     }
 
@@ -266,7 +276,7 @@ bool hal_wifi_disconnect(void)
 
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "disconnect failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "disconnect failed: %s", esp_err_to_name(err));  // 打印错误码
         s_manual_disconnect = false;
         return false;
     }
@@ -274,6 +284,7 @@ bool hal_wifi_disconnect(void)
     return true;
 }
 
+// 获取 wifi 状态
 hal_wifi_state_t hal_wifi_get_state(void)
 {
     return s_state;
