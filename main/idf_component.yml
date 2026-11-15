@@ -16,3 +16,4 @@ dependencies:
   #   public: true
   lvgl/lvgl: ^9.6.0~1
   nixy4/u8g2: ^0.1.4
+  espressif/cjson: ^1.7.19~2
