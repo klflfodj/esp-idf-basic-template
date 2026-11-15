@@ -29,6 +29,7 @@
 //      AP 重跑，最多 1 秒生效（下一次 update）。
 //   4. 回调只在"连上"和"已连接后掉线"时触发，尝试失败不触发。
 //   5. 回调运行在调用 update() 的任务里，别在里面做耗时操作。
+//   6. wifi_name 是可选的，为空时用默认名称。（最长 32 字符，只能用字母数字和 -）
 
 // wifi 状态
 typedef enum
@@ -49,7 +50,7 @@ typedef enum
 // wifi 回调函数
 typedef void (*svc_wifi_cb_t)(svc_wifi_evt_t evt, void *arg);
 
-bool             svc_wifi_init(void);
+bool             svc_wifi_init(const char *wifi_name);
 void             svc_wifi_update(void);
 svc_wifi_state_t svc_wifi_get_state(void);
 bool             svc_wifi_is_connected(void);

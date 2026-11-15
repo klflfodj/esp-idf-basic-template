@@ -7,7 +7,6 @@
 #include "bsp.h"
 
 #include "nvs_hal.h"
-#include "wifi_hal.h"
 
 #include "oled_drv.h"
 #include "servo_drv.h"
@@ -15,14 +14,12 @@
 #include "pot_drv.h"
 
 #include "filter_lowpass_svc.h"
+#include "wifi_svc.h"
 
 #include "esp_system.h"
 #include "esp_log.h"
 
 #define APP_POT_FILTER_SHIFT  2 // 低通滤波器位移,约 80ms
-
-#define WIFI_TEST_SSID "ssid"
-#define WIFI_TEST_PASS "password"
 
 
 static const char *TAG = "app";
@@ -74,7 +71,7 @@ static void s_key_cb(void *arg, drv_key_event_t evt)
 
         case DRV_KEY_EVT_MULTI:
         {
-            key_count = 0;
+            svc_wifi_connect_now();
             break;
         }
 
@@ -111,6 +108,65 @@ static void s_key_cb(void *arg, drv_key_event_t evt)
     }
 }
 
+static bool s_pot_range_load(void)
+{
+    uint16_t mn = 0, mx = 0;
+
+    // 从 NVS 加载电位器范围
+    if (!hal_nvs_get_u16("pot_min", &mn) || !hal_nvs_get_u16("pot_max", &mx))
+    {
+        ESP_LOGI(TAG, "no saved pot range");
+        return false;
+    }
+
+    // 设置电位器范围
+    if (!drv_pot_set_range(mn, mx))
+    {
+        // NVS 里存了脏数据（比如旧版本写的），drv 自带的校验挡住了
+        ESP_LOGW(TAG, "saved range invalid (%u ~ %u), need recalibration",
+                 (unsigned)mn, (unsigned)mx);
+        return false;
+    }
+
+    ESP_LOGI(TAG, "pot range restored: %u ~ %u", (unsigned)mn, (unsigned)mx);
+
+    return true;
+}
+
+static void s_wifi_cb(svc_wifi_evt_t evt, void *arg)
+{
+    (void)arg;
+
+    if (evt == SVC_WIFI_EVT_CONNECTED)
+    {
+        char ip[16] = {0};
+
+        if (svc_wifi_get_ip(ip, sizeof(ip)))
+        {
+            ESP_LOGI(TAG, "wifi connected, ip %s", ip);
+        }
+    }
+    else
+    {
+        ESP_LOGW(TAG, "wifi lost");
+    }
+}
+
+static void s_brightness_load(void)
+{
+    uint8_t br = 0;
+
+    if (!hal_nvs_get_u8("oled_br", &br))
+    {
+        ESP_LOGI(TAG, "no saved brightness");
+        return;
+    }
+
+    s_brightness = br;
+    drv_oled_set_contrast(br);   //开机就应用，不然要等切到亮度模式才生效
+    ESP_LOGI(TAG, "brightness restored: %u",(unsigned)br);
+}
+
 static void oled_ui(void)
 {
     uint8_t  s = 0;
@@ -138,46 +194,6 @@ static void oled_ui(void)
     drv_oled_text(110, 15, s_br_mode ? "BR" : "SV");   //当前模式
 
     drv_oled_update();
-}
-
-static bool s_pot_range_load(void)
-{
-    uint16_t mn = 0, mx = 0;
-
-    // 从 NVS 加载电位器范围
-    if (!hal_nvs_get_u16("pot_min", &mn) || !hal_nvs_get_u16("pot_max", &mx))
-    {
-        ESP_LOGI(TAG, "no saved pot range");
-        return false;
-    }
-
-    // 设置电位器范围
-    if (!drv_pot_set_range(mn, mx))
-    {
-        // NVS 里存了脏数据（比如旧版本写的），drv 自带的校验挡住了
-        ESP_LOGW(TAG, "saved range invalid (%u ~ %u), need recalibration",
-                 (unsigned)mn, (unsigned)mx);
-        return false;
-    }
-
-    ESP_LOGI(TAG, "pot range restored: %u ~ %u", (unsigned)mn, (unsigned)mx);
-
-    return true;
-}
-
-static void s_brightness_load(void)
-{
-    uint8_t br = 0;
-
-    if (!hal_nvs_get_u8("oled_br", &br))
-    {
-        ESP_LOGI(TAG, "no saved brightness");
-        return;
-    }
-
-    s_brightness = br;
-    drv_oled_set_contrast(br);   //开机就应用，不然要等切到亮度模式才生效
-    ESP_LOGI(TAG, "brightness restored: %u",(unsigned)br);
 }
 
 bool app_init(void)
@@ -212,93 +228,17 @@ bool app_init(void)
 
 void TaskWiFi(void *pvParameters)
 {
-    (void)pvParameters;
-
-    if (!hal_wifi_init())
+    if (!svc_wifi_init("KSKBL"))
     {
         ESP_LOGE(TAG, "wifi init failed");
         vTaskDelete(NULL);
     }
 
-    ESP_LOGI(TAG, "heap before connect: %u", (unsigned)esp_get_free_heap_size());
-
-    hal_wifi_connect(WIFI_TEST_SSID, WIFI_TEST_PASS);
-
-    hal_wifi_state_t last      = HAL_WIFI_IDLE;
-    uint8_t          heartbeat = 0;   //心跳计数，5 秒一次
-    uint8_t          fail_wait = 0;   //失败后等几秒再重试
-    uint8_t          conn_wait = 0;   //连接中卡了多少秒
+    svc_wifi_set_cb(s_wifi_cb, NULL);
 
     while (1)
     {
-        hal_wifi_state_t now = hal_wifi_get_state();
-
-        if (now != last)
-        {
-            last = now;
-
-            if (now == HAL_WIFI_CONNECTED)
-            {
-                char   ip[16] = {0};//IP地址
-                int8_t rssi   = 0;//信号强度
-
-                hal_wifi_get_ip(ip, sizeof(ip));
-                hal_wifi_get_rssi(&rssi);
-
-                ESP_LOGI(TAG, "connected: ip=%s rssi=%d", ip, (int)rssi);
-                ESP_LOGI(TAG, "heap after connect: %u", (unsigned)esp_get_free_heap_size());
-            }
-            else if (now == HAL_WIFI_FAILED)
-            {
-                ESP_LOGW(TAG, "failed, reason=%d", hal_wifi_get_disconnect_reason());
-            }
-            else
-            {
-                ESP_LOGI(TAG, "state -> %d", (int)now);
-            }
-        }
-
-        //连接中卡太久：上层计时，强制复位重来
-        if (now == HAL_WIFI_CONNECTING)
-        {
-            if (++conn_wait >= 15)
-            {
-                conn_wait = 0;
-                ESP_LOGW(TAG, "connecting 15s, reset");
-                hal_wifi_disconnect();
-                fail_wait = 9;      //下一轮就重连
-            }
-        }
-        else
-        {
-            conn_wait = 0;
-        }
-
-        //失败或空闲时，每 10 秒重试一次，方便看它能不能自己回来
-        if (now == HAL_WIFI_FAILED || now == HAL_WIFI_IDLE)
-        {
-            if (++fail_wait >= 10)
-            {
-                fail_wait = 0;
-                ESP_LOGI(TAG, "retry connect");
-                hal_wifi_connect(WIFI_TEST_SSID, WIFI_TEST_PASS);
-            }
-        }
-        else
-        {
-            fail_wait = 0;
-        }
-
-        //每 5 秒打一次心跳，卡在 CONNECTING 也能看见
-        if (++heartbeat >= 5)
-        {
-            heartbeat = 0;
-            ESP_LOGI(TAG, "heartbeat: state=%d reason=%d heap=%u",
-                     (int)now,
-                     hal_wifi_get_disconnect_reason(),
-                     (unsigned)esp_get_free_heap_size());
-        }
-
+        svc_wifi_update();
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

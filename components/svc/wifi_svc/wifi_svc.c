@@ -23,7 +23,7 @@ typedef struct
 // AP 表：按顺序尝试，填真实值
 static const wifi_svc_ap_t s_ap_table[] =
 {
-    { "YOUR_SSID_1", "YOUR_PASSWORD_1" },
+    { "ry400", "999999999" },
     { "YOUR_SSID_2", "YOUR_PASSWORD_2" },
 };
 
@@ -140,14 +140,14 @@ static void wifi_svc_on_connected(void)
 }
 
 // 初始化 WiFi 
-bool svc_wifi_init(void)
+bool svc_wifi_init(const char *wifi_name)
 {
     if (s_inited)
     {
         return true;
     }
 
-    if (!hal_wifi_init())
+    if (!hal_wifi_init(wifi_name))
     {
         ESP_LOGE(TAG, "hal init failed");
         return false;

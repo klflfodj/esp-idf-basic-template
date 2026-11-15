@@ -40,7 +40,7 @@ typedef enum
 } hal_wifi_state_t;
 
 
-bool hal_wifi_init(void);
+bool hal_wifi_init(const char *wifi_name);
 bool hal_wifi_connect(const char *ssid, const char *password);
 bool hal_wifi_disconnect(void);
 hal_wifi_state_t hal_wifi_get_state(void);

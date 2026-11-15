@@ -75,7 +75,7 @@ static void hal_wifi_event_handler(void *arg, esp_event_base_t base, int32_t id,
 }
 
 // 初始化 wifi
-bool hal_wifi_init(void)
+bool hal_wifi_init(const char *wifi_name)
 {
     if (s_inited)
     {
@@ -107,6 +107,15 @@ bool hal_wifi_init(void)
         {
             ESP_LOGE(TAG, "create sta netif failed");  // 打印错误码
             return false;
+        }
+    }
+    
+    // 设置 STA netif 名称
+    if (wifi_name != NULL && wifi_name[0] != '\0')
+    {
+        if (esp_netif_set_hostname(s_netif, wifi_name) != ESP_OK)
+        {
+            ESP_LOGW(TAG, "wifi_name invalid, use default");
         }
     }
 
