@@ -135,7 +135,7 @@ static void wifi_svc_on_connected(void)
     // 调用回调函数
     if (s_cb != NULL)
     {
-        s_cb(SVC_WIFI_CONNECTED, s_cb_arg);
+        s_cb(SVC_WIFI_EVT_CONNECTED, s_cb_arg);
     }
 }
 

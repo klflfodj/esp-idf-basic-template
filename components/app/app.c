@@ -15,15 +15,22 @@
 
 #include "filter_lowpass_svc.h"
 #include "wifi_svc.h"
+#include "net_time.h"
+#include "net_weather.h"
 
 #include "esp_system.h"
 #include "esp_log.h"
+
+#define APP_WEATHER_CITY    "天津"           // 天气查询城市
+#define APP_WEATHER_PERIOD_MS  (30 * 60 * 1000) // 30分钟更新一次天气
 
 #define APP_POT_FILTER_SHIFT  2 // 低通滤波器位移,约 80ms
 
 
 static const char *TAG = "app";
 
+
+static const char *s_week_cn[7] = { "日", "一", "二", "三", "四", "五", "六" };
 
 static svc_filter_lowpass_t s_pot_filter;// 电位器低通滤波器
 
@@ -145,6 +152,8 @@ static void s_wifi_cb(svc_wifi_evt_t evt, void *arg)
         {
             ESP_LOGI(TAG, "wifi connected, ip %s", ip);
         }
+
+        svc_time_init();
     }
     else
     {
@@ -169,6 +178,7 @@ static void s_brightness_load(void)
 
 static void oled_ui(void)
 {
+    svc_time_t t;
     uint8_t  s = 0;
     uint16_t k = key_count;
 
@@ -183,7 +193,15 @@ static void oled_ui(void)
     drv_oled_clear();
 
     drv_oled_set_font(DRV_OLED_FONT_CN);
-    drv_oled_text(15, 15, "舵机和OLED测试");
+    if (svc_time_get(&t))
+    {
+        drv_oled_textf(15, 15, "%02d-%02d 周%s %02d:%02d",
+                       t.month, t.day, s_week_cn[t.week], t.hour, t.minute);
+    }
+    else
+    {
+        drv_oled_text(15, 15, "--:--");
+    }
 
     drv_oled_set_font(DRV_OLED_FONT_BIG);
     drv_oled_textf(36, 50, "%03d", s);
@@ -236,9 +254,28 @@ void TaskWiFi(void *pvParameters)
 
     svc_wifi_set_cb(s_wifi_cb, NULL);
 
+    uint32_t last_weather = 0;  /// 上次查询天气的时间戳
+
     while (1)
     {
         svc_wifi_update();
+
+        // 当前时间戳
+        // 连上后先拉一次，之后每 30 分钟一次
+        uint32_t now = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);  
+
+        if (svc_wifi_is_connected() &&
+            ((last_weather == 0) || ((uint32_t)(now - last_weather) >= APP_WEATHER_PERIOD_MS)))//30分钟更新一次天气
+        {
+            svc_weather_t w;
+
+            // 查询天气
+            if (svc_weather_fetch(APP_WEATHER_CITY, &w))
+            {
+                last_weather = now;
+                ESP_LOGI(TAG, "weather: %s %s %s", w.type, w.temperature, w.quality);
+            }
+        }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
