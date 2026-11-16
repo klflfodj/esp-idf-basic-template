@@ -479,3 +479,14 @@ void drv_oled_mirror(uint8_t H, uint8_t V)
     u8x8_cad_EndTransfer(u8x8);
 }
 
+void drv_oled_blit(const uint8_t *buf)
+{
+    OLED_GUARD();
+
+    if (buf == NULL)
+    {
+        return;
+    }
+
+    memcpy(u8g2_GetBufferPtr(&s_u8g2), buf, (size_t)(s_width / 8) * s_height);
+}

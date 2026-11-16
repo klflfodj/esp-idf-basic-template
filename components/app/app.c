@@ -18,6 +18,8 @@
 #include "net_time.h"
 #include "net_weather.h"
 
+#include "eye_expression.h"
+
 #include "esp_system.h"
 #include "esp_log.h"
 
@@ -32,9 +34,11 @@ static const char *TAG = "app";
 
 static const char *s_week_cn[7] = { "日", "一", "二", "三", "四", "五", "六" };
 
-static svc_filter_lowpass_t s_pot_filter;// 电位器低通滤波器
+static QueueHandle_t s_emotion_q;      //按键 → 显示任务
+static uint8_t       s_emotion_next = 0;  //只在按键任务里改
+static volatile bool s_eye_mode = true;   //true=眼睛 false=数据页
 
-static volatile uint16_t key_count = 0;//按键计数器
+static svc_filter_lowpass_t s_pot_filter;// 电位器低通滤波器
 
 static volatile bool     s_calib   = false;    /* 是否在校准模式 */
 static volatile uint16_t pot_value = 0;//电位器值计数器
@@ -58,7 +62,13 @@ static void s_key_cb(void *arg, drv_key_event_t evt)
             break;
         case DRV_KEY_EVT_SINGLE:
         {
-            key_count++;
+            //切换表情,循环播放
+            s_emotion_next = (uint8_t)((s_emotion_next + 1) % EYE_EMOTION_COUNT);
+
+            //发送表情到显示任务
+            eye_emotion_t e = (eye_emotion_t)s_emotion_next;
+            xQueueOverwrite(s_emotion_q, &e);
+
             break;
         }
 
@@ -78,7 +88,8 @@ static void s_key_cb(void *arg, drv_key_event_t evt)
 
         case DRV_KEY_EVT_MULTI:
         {
-            svc_wifi_connect_now();
+            s_eye_mode = !s_eye_mode;
+            ESP_LOGI(TAG, "display: %s", s_eye_mode ? "eyes" : "data");
             break;
         }
 
@@ -180,7 +191,6 @@ static void oled_ui(void)
 {
     svc_time_t t;
     uint8_t  s = 0;
-    uint16_t k = key_count;
 
     //亮度模式：同一个旋钮值换算成亮度
     if (s_br_mode)
@@ -207,7 +217,6 @@ static void oled_ui(void)
     drv_oled_textf(36, 50, "%03d", s);
 
     drv_oled_set_font(DRV_OLED_FONT_SMALL);
-    drv_oled_textf(15, 60, "%03d", k);
     drv_oled_textf(100, 60, "%04d", pot_value);
     drv_oled_text(110, 15, s_br_mode ? "BR" : "SV");   //当前模式
 
@@ -235,6 +244,15 @@ bool app_init(void)
         ESP_LOGE(TAG, "pot filter init failed");
         return false;
     }
+
+    s_emotion_q = xQueueCreate(1, sizeof(eye_emotion_t));//按键 → 显示任务
+    if (s_emotion_q == NULL)
+    {
+        ESP_LOGE(TAG, "emotion queue create failed");
+        return false;
+    }
+
+    eye_expression_init();
 
     xTaskCreate(TaskServo, "Servo", 2048, NULL, 5, NULL);
     xTaskCreate(TaskOLED, "OLED", 4096, NULL, 1, NULL);
@@ -324,12 +342,27 @@ void TaskPot(void *pvParameters)
 
 void TaskOLED(void *pvParameters)
 {
-    while(1)
+    while (1)
     {
-        oled_ui();
+        eye_emotion_t e;
 
-        vTaskDelay(pdMS_TO_TICKS(30));
+        //按键改了表情，在这里应用（保证和 update 同一个任务）
+        if (xQueueReceive(s_emotion_q, &e, 0) == pdTRUE)
+        {
+            eye_expression_set_emotion(e);
+            ESP_LOGI(TAG, "emotion -> %d", (int)e);
+        }
+
+        if (s_eye_mode)
+        {
+            eye_expression_update();
+            vTaskDelay(pdMS_TO_TICKS(40));   //25fps
+        }
+        else
+        {
+            oled_ui();
+            vTaskDelay(pdMS_TO_TICKS(30));
+        }
     }
 }
-
 

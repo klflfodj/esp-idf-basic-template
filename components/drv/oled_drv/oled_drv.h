@@ -172,6 +172,7 @@ void drv_oled_draw_bitmap(uint8_t x, uint8_t y, uint8_t w, uint8_t h, const uint
 
 void drv_oled_mirror(uint8_t H, uint8_t V);
 
-
+// 贴一整帧页格式显存（128x64 = 1024 字节），之后要调 drv_oled_update()
+void drv_oled_blit(const uint8_t *buf);
 
 
