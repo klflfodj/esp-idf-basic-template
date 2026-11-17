@@ -175,4 +175,5 @@ void drv_oled_mirror(uint8_t H, uint8_t V);
 // 贴一整帧页格式显存（128x64 = 1024 字节），之后要调 drv_oled_update()
 void drv_oled_blit(const uint8_t *buf);
 
-
+// 量当前字体下这段文字的像素宽度（需要在 set_font 之后调用）
+uint8_t drv_oled_text_width(const char *str);

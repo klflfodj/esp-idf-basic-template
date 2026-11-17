@@ -490,3 +490,14 @@ void drv_oled_blit(const uint8_t *buf)
 
     memcpy(u8g2_GetBufferPtr(&s_u8g2), buf, (size_t)(s_width / 8) * s_height);
 }
+
+// 量当前字体下这段文字的像素宽度（需要在 set_font 之后调用）
+uint8_t drv_oled_text_width(const char *str)
+{
+    if ((!s_ready) || (str == NULL))
+    {
+        return 0;
+    }
+
+    return (uint8_t)u8g2_GetUTF8Width(&s_u8g2, str);
+}
